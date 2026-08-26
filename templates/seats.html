@@ -4,22 +4,28 @@
     <h2>{{ show.movie }}</h2>
     <p>{{ show.time }} | Price: Rs. {{ 650 if "IMAX" in show.movie else 250 }} per seat</p>
 
-    <div class="screen">SCREEN (Front)</div>
+    <div class="screen">SCREEN</div>
+
+    <!-- Zoom Buttons -->
+    <div style="text-align: center; margin-bottom: 15px;">
+        <button type="button" class="btn" onclick="zoomOut()" style="padding: 8px 16px;">Zoom Out −</button>
+        <button type="button" class="btn" onclick="zoomIn()" style="padding: 8px 16px;">Zoom In +</button>
+    </div>
 
     <form method="POST" action="{{ url_for('book') }}">
         <input type="hidden" name="show_id" value="{{ show_id }}">
 
-        <div style="overflow-x:auto; text-align:center;">
+        <div id="seat-container" style="overflow-x: auto; text-align: center; padding-bottom: 15px;">
             {% for i in range(rows) %}
-                <div style="margin-bottom: 4px;">
-                    <strong>{{ "ABCDEFGHIJKLMNOP"[i] }}</strong>
+                <div style="margin-bottom: 6px; white-space: nowrap;">
+                    <strong style="display: inline-block; width: 25px;">{{ "ABCDEFGHIJKLMNOP"[i] }}</strong>
                     {% for j in range(cols) %}
                         {% set seat_id = "ABCDEFGHIJKLMNOP"[i] ~ (j+1)|string %}
                         {% if show.seats[i][j] %}
                             <span class="seat booked">X</span>
                         {% else %}
                             <label>
-                                <input type="checkbox" name="seats" value="{{ seat_id }}" style="display:none;" 
+                                <input type="checkbox" name="seats" value="{{ seat_id }}" style="display:none;"
                                        onchange="this.nextElementSibling.classList.toggle('selected')">
                                 <span class="seat available">{{ j+1 }}</span>
                             </label>
@@ -29,15 +35,41 @@
             {% endfor %}
         </div>
 
-        <br><br>
-        <label>Your Name: 
-            <input type="text" name="name" required style="padding:8px; width:250px;">
-        </label><br><br>
-        <label>Age: 
-            <input type="number" name="age" min="1" max="120" required style="padding:8px; width:100px;">
-        </label><br><br>
+        <br>
+        <div style="text-align: center;">
+            <label>Your Name:<br>
+                <input type="text" name="name" required style="padding:10px; width:90%; max-width:300px; margin-top:5px;">
+            </label><br><br>
+            <label>Age:<br>
+                <input type="number" name="age" min="1" max="120" required style="padding:10px; width:100px; margin-top:5px;">
+            </label><br><br>
 
-        <button type="submit" class="btn">Continue to Food →</button>
+            <button type="submit" class="btn">Continue to Food →</button>
+        </div>
     </form>
 </div>
+
+<script>
+    let currentZoom = 1;
+
+    function zoomIn() {
+        if (currentZoom < 1.6) {
+            currentZoom += 0.15;
+            document.getElementById('seat-container').style.zoom = currentZoom;
+        }
+    }
+
+    function zoomOut() {
+        if (currentZoom > 0.6) {
+            currentZoom -= 0.15;
+            document.getElementById('seat-container').style.zoom = currentZoom;
+        }
+    }
+
+    // Auto smaller on mobile
+    if (window.innerWidth < 600) {
+        currentZoom = 0.75;
+        document.getElementById('seat-container').style.zoom = currentZoom;
+    }
+</script>
 {% endblock %}
