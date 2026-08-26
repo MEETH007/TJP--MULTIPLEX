@@ -5,29 +5,135 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TJP Cinema</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #0f0f0f; color: #fff; margin: 0; padding: 20px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff; 
+            min-height: 100vh;
+            padding: 20px;
+        }
         .container { max-width: 1100px; margin: auto; }
-        h1, h2 { color: #ffcc00; }
-        .btn { background: #ffcc00; color: #000; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; margin: 5px; font-weight: bold; }
-        .btn:hover { background: #ffaa00; }
-        .card { background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
-        .seat { display: inline-block; width: 28px; height: 28px; margin: 2px; text-align: center; line-height: 28px; border-radius: 4px; cursor: pointer; font-size: 11px; }
-        .available { background: #2a2a2a; border: 1px solid #555; }
-        .booked { background: #c0392b; color: white; cursor: not-allowed; }
-        .selected { background: #ffcc00; color: #000; }
-        .screen { background: #333; text-align: center; padding: 12px; margin-bottom: 20px; border-radius: 5px; letter-spacing: 3px; }
-        .flash { background: #ff4444; padding: 12px; border-radius: 5px; margin-bottom: 15px; }
+        
+        /* Logo + Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 15px;
+        }
+        .logo {
+            font-size: 42px;
+            font-weight: bold;
+            color: #ffcc00;
+            text-shadow: 0 0 15px rgba(255,204,0,0.6);
+            letter-spacing: 2px;
+        }
+        .tagline {
+            color: #aaa;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        h1, h2 { color: #ffcc00; margin-bottom: 15px; }
+        
+        .btn { 
+            background: linear-gradient(to right, #ffcc00, #ffaa00);
+            color: #000; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 50px; 
+            cursor: pointer; 
+            text-decoration: none; 
+            display: inline-block; 
+            margin: 6px; 
+            font-weight: bold;
+            transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(255,204,0,0.3);
+        }
+        .btn:hover { 
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255,204,0,0.5);
+        }
+        
+        .card { 
+            background: rgba(255,255,255,0.08); 
+            padding: 25px; 
+            border-radius: 20px; 
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .flash { 
+            background: #ff4444; 
+            padding: 12px 20px; 
+            border-radius: 10px; 
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Better Seats */
+        .seat { 
+            display: inline-block; 
+            width: 32px; 
+            height: 32px; 
+            margin: 3px; 
+            text-align: center; 
+            line-height: 32px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 12px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .available { 
+            background: #2ecc71; 
+            color: white;
+        }
+        .available:hover {
+            transform: scale(1.15);
+            background: #27ae60;
+        }
+        .booked { 
+            background: #e74c3c; 
+            color: white; 
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .selected { 
+            background: #f1c40f; 
+            color: #000;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px #f1c40f;
+        }
+        .screen { 
+            background: linear-gradient(to bottom, #555, #222);
+            text-align: center; 
+            padding: 15px; 
+            margin: 20px auto 30px;
+            border-radius: 10px; 
+            letter-spacing: 8px;
+            font-weight: bold;
+            width: 80%;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎬 TJP CINEMA</h1>
-        <a href="{{ url_for('index') }}" class="btn">Home</a>
-        <a href="{{ url_for('view_bookings') }}" class="btn">View Bookings</a>
-        <a href="{{ url_for('scan') }}" class="btn">Scan Ticket</a>
-        <hr style="border-color:#333; margin: 20px 0;">
+        <!-- LOGO SECTION -->
+        <div class="header">
+            <div class="logo">🎬 TJP CINEMA</div>
+            <div class="tagline">Premium Movie Experience</div>
+        </div>
+
+        <div style="text-align:center; margin-bottom: 25px;">
+            <a href="{{ url_for('index') }}" class="btn">Home</a>
+            <a href="{{ url_for('view_bookings') }}" class="btn">View Bookings</a>
+            <a href="{{ url_for('scan') }}" class="btn">Scan Ticket</a>
+        </div>
 
         {% with messages = get_flashed_messages() %}
             {% if messages %}
