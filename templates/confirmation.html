@@ -1,30 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card" style="text-align:center;">
-    <h2 style="color:#00ff88;">Booking Successful!</h2>
+    <div style="font-size: 60px; margin-bottom: 10px;">🎉</div>
+    <h2 style="color:#00ff88; font-size: 32px;">Booking Successful!</h2>
+    <p style="color:#aaa; margin-bottom: 25px;">Your tickets have been confirmed</p>
 
-    <div style="background:#222; padding:25px; border-radius:10px; display:inline-block; text-align:left; min-width:320px;">
+    <div style="background: rgba(0,0,0,0.3); padding: 30px; border-radius: 20px; display: inline-block; text-align: left; min-width: 340px; border: 2px solid #ffcc00;">
+        
+        <p><strong>Ticket ID:</strong> <span style="color:#ffcc00; font-size:1.4em;">{{ b.ticket_id }}</span></p>
+
+        <!-- QR CODE -->
         <div style="text-align:center; margin: 25px 0;">
-    <p><strong>Scan this QR Code at the entrance:</strong></p>
+            <p style="margin-bottom:10px;"><strong>Scan at Entrance:</strong></p>
 
-    <!-- Create the full text that will be inside the QR -->
-    {% set qr_data = "TJP CINEMA TICKET\nTicket ID: " ~ b.ticket_id ~ "\nName: " ~ b.name ~ "\nMovie: " ~ b.movie ~ "\nTime: " ~ b.show_time ~ "\nSeats: " %}
-    {% for i in range(b.rows|length) %}
-        {% set qr_data = qr_data ~ "ABCDEFGHIJKLMNOP"[b.rows[i]] ~ (b.cols[i] + 1)|string %}
-        {% if not loop.last %}
-            {% set qr_data = qr_data ~ ", " %}
-        {% endif %}
-    {% endfor %}
+            {% set qr_data = "TJP CINEMA TICKET\nTicket ID: " ~ b.ticket_id ~ "\nName: " ~ b.name ~ "\nMovie: " ~ b.movie ~ "\nTime: " ~ b.show_time ~ "\nSeats: " %}
+            {% for i in range(b.rows|length) %}
+                {% set qr_data = qr_data ~ "ABCDEFGHIJKLMNOP"[b.rows[i]] ~ (b.cols[i] + 1)|string %}
+                {% if not loop.last %}
+                    {% set qr_data = qr_data ~ ", " %}
+                {% endif %}
+            {% endfor %}
 
-    <img src="https://api.qrserver.com/v1/create-qr-code/?size=230x230&data={{ qr_data|urlencode }}" 
-         alt="QR Code"
-         style="border: 10px solid white; border-radius: 12px; background: white;">
-    
-    <p style="font-size: 13px; color: #aaa; margin-top: 8px;">
-        Contains: Ticket ID, Name, Movie, Time & Seats
-    </p>
-</div>
-        <p><strong>Ticket ID:</strong> <span style="color:#ffcc00; font-size:1.3em;">{{ b.ticket_id }}</span></p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={{ qr_data|urlencode }}" 
+                 alt="QR Code"
+                 style="border: 12px solid white; border-radius: 15px; background: white;">
+        </div>
+
         <p><strong>Name:</strong> {{ b.name }}</p>
         <p><strong>Age:</strong> {{ b.age }}</p>
         <p><strong>Movie:</strong> {{ b.movie }}</p>
@@ -38,16 +39,16 @@
 
         {% if b.foods %}
             <p><strong>Food:</strong></p>
-            <ul>
+            <ul style="margin-left: 20px;">
             {% for f in b.foods %}
-                <li>{{ f.quantity }} x {{ f.name }} = Rs. {{ f.price * f.quantity }}</li>
+                <li>{{ f.quantity }} × {{ f.name }} = Rs. {{ f.price * f.quantity }}</li>
             {% endfor %}
             </ul>
             <p><strong>Food Total:</strong> Rs. {{ b.food_total }}</p>
         {% endif %}
 
-        <hr style="border-color:#444;">
-        <p style="font-size:1.4em;"><strong>GRAND TOTAL: Rs. {{ b.total_price }}</strong></p>
+        <hr style="border-color:#555; margin: 20px 0;">
+        <p style="font-size:1.5em; color:#ffcc00;"><strong>GRAND TOTAL: Rs. {{ b.total_price }}</strong></p>
     </div>
 
     <br><br>
