@@ -4,6 +4,26 @@
     <h2 style="color:#00ff88;">Booking Successful!</h2>
 
     <div style="background:#222; padding:25px; border-radius:10px; display:inline-block; text-align:left; min-width:320px;">
+        <div style="text-align:center; margin: 25px 0;">
+    <p><strong>Scan this QR Code at the entrance:</strong></p>
+
+    <!-- Create the full text that will be inside the QR -->
+    {% set qr_data = "TJP CINEMA TICKET\nTicket ID: " ~ b.ticket_id ~ "\nName: " ~ b.name ~ "\nMovie: " ~ b.movie ~ "\nTime: " ~ b.show_time ~ "\nSeats: " %}
+    {% for i in range(b.rows|length) %}
+        {% set qr_data = qr_data ~ "ABCDEFGHIJKLMNOP"[b.rows[i]] ~ (b.cols[i] + 1)|string %}
+        {% if not loop.last %}
+            {% set qr_data = qr_data ~ ", " %}
+        {% endif %}
+    {% endfor %}
+
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=230x230&data={{ qr_data|urlencode }}" 
+         alt="QR Code"
+         style="border: 10px solid white; border-radius: 12px; background: white;">
+    
+    <p style="font-size: 13px; color: #aaa; margin-top: 8px;">
+        Contains: Ticket ID, Name, Movie, Time & Seats
+    </p>
+</div>
         <p><strong>Ticket ID:</strong> <span style="color:#ffcc00; font-size:1.3em;">{{ b.ticket_id }}</span></p>
         <p><strong>Name:</strong> {{ b.name }}</p>
         <p><strong>Age:</strong> {{ b.age }}</p>
