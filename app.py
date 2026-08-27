@@ -191,6 +191,24 @@ def scan():
         tid = request.form.get("ticket_id", "").strip().upper()
         result = next((b for b in bookings if b.ticket_id.upper() == tid), None)
     return render_template("scan.html", result=result)
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+    # Simple password protection
+    password = "tjp123"   # ← Change this password to whatever you want
 
+    if request.method == "POST":
+        entered = request.form.get("password", "")
+        if entered == password:
+            session["admin_logged_in"] = True
+        else:
+            flash("Wrong password!")
+            return redirect(url_for("admin"))
+
+    if not session.get("admin_logged_in"):
+        return render_template("admin_login.html")
+
+    total_revenue = sum(b.total_price for b in bookings)
+
+    return render_template("admin.html", bookings=bookings, total_revenue=total_revenue)
 if __name__ == "__main__":
     app.run(debug=True)
