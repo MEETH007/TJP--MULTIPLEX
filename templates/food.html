@@ -1,28 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
-    <h2>Food & Beverages</h2>
-    <p>Select items (leave 0 if you don't want any)</p>
+    <h2 style="text-align:center;">Food & Beverages</h2>
+    <p style="text-align:center; color:#aaa; margin-bottom:25px;">Optional – You can skip if you don’t want any</p>
 
     <form method="POST">
-        <table>
-            <tr>
-                <th>Item</th>
-                <th>Price</th>
-                <th>Quantity</th>
-            </tr>
+        <div style="display: grid; gap: 15px;">
             {% for key, item in menu.items() %}
-            <tr>
-                <td>{{ item[0] }}</td>
-                <td>Rs. {{ item[1] }}</td>
-                <td>
-                    <input type="number" name="qty_{{ key }}" value="0" min="0" max="20" style="width:70px; padding:6px;">
-                </td>
-            </tr>
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ item[0] }}</strong><br>
+                    <span style="color:#ffcc00;">Rs. {{ item[1] }}</span>
+                </div>
+                <input type="number" name="qty_{{ key }}" value="0" min="0" max="10" 
+                       style="width: 70px; padding: 8px; border-radius: 8px; border: none; text-align: center; font-size: 16px;">
+            </div>
             {% endfor %}
-        </table>
-        <br>
-        <button type="submit" class="btn">Confirm Booking</button>
+        </div>
+
+        <div style="text-align:center; margin-top: 30px;">
+            <button type="submit" class="btn">Confirm Booking & Get Ticket</button>
+        </div>
     </form>
 </div>
 {% endblock %}
