@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
-    <h2 style="text-align:center;">Now Showing</h2>
+    <h2 style="text-align:center; margin-bottom: 25px;">Now Showing</h2>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 25px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
         {% for i in range(shows|length) %}
-            {% set available = 0 %}
+            {% set ns = namespace(available=0) %}
             {% for row in shows[i].seats %}
                 {% for seat in row %}
-                    {% if not seat %}
-                        {% set available = available + 1 %}
+                    {% if seat == False %}
+                        {% set ns.available = ns.available + 1 %}
                     {% endif %}
                 {% endfor %}
             {% endfor %}
@@ -19,14 +19,14 @@
                 <p style="color:#ccc; margin-bottom: 12px;">{{ shows[i].time }}</p>
                 
                 <p style="margin-bottom: 15px;">
-                    {% if available == 0 %}
+                    {% if ns.available == 0 %}
                         <span style="color:#ff4444; font-weight:bold;">Sold Out</span>
                     {% else %}
-                        <span style="color:#2ecc71;">{{ available }} seats left</span>
+                        <span style="color:#2ecc71;">{{ ns.available }} seats left</span>
                     {% endif %}
                 </p>
 
-                {% if available > 0 %}
+                {% if ns.available > 0 %}
                     <a href="{{ url_for('seats', show_id=i) }}" class="btn" style="width:100%; text-align:center;">Select Seats</a>
                 {% else %}
                     <button class="btn" style="width:100%; background:#555; cursor:not-allowed;" disabled>Sold Out</button>
