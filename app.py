@@ -183,7 +183,10 @@ def confirmation(ticket_id):
 
 @app.route("/bookings")
 def view_bookings():
-    return render_template("bookings.html", bookings=bookings)
+    try:
+        return render_template("bookings.html", bookings=bookings)
+    except Exception as e:
+        return f"<h2>Error loading bookings</h2><p>{str(e)}</p>"
 
 @app.route("/scan", methods=["GET", "POST"])
 def scan():
