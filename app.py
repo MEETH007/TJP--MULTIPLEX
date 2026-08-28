@@ -186,7 +186,11 @@ def view_bookings():
     try:
         return render_template("bookings.html", bookings=bookings)
     except Exception as e:
-        return f"<h2>Error loading bookings</h2><p>{str(e)}</p>"
+        return f"""
+        <h2>Error Loading Bookings</h2>
+        <p><strong>Error:</strong> {str(e)}</p>
+        <pre>{repr(e)}</pre>
+        """
 
 @app.route("/scan", methods=["GET", "POST"])
 def scan():
