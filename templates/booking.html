@@ -3,21 +3,40 @@
 <div class="card">
     <h2>All Bookings</h2>
 
-    {% if bookings|length == 0 %}
-        <p>No bookings yet.</p>
+    {% if not bookings or bookings|length == 0 %}
+        <p style="text-align:center; color:#aaa; margin-top:30px;">No bookings yet.</p>
     {% else %}
         {% for b in bookings %}
-        <div style="background:#222; padding:20px; margin-bottom:15px; border-radius:8px;">
+        <div style="background: rgba(0,0,0,0.35); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,204,0,0.2);">
             <p><strong>Ticket ID:</strong> <span style="color:#ffcc00;">{{ b.ticket_id }}</span></p>
-            <p><strong>Name:</strong> {{ b.name }} (Age {{ b.age }})</p>
+            <p><strong>Name:</strong> {{ b.name }} (Age: {{ b.age }})</p>
             <p><strong>Movie:</strong> {{ b.movie }}</p>
-            <p><strong>Time:</strong> {{ b.show_time }}</p>
+            <p><strong>Show Time:</strong> {{ b.show_time }}</p>
+
             <p><strong>Seats:</strong>
-                {% for i in range(b.rows|length) %}
-                    {{ "ABCDEFGHIJKLMNOP"[b.rows[i]] }}{{ b.cols[i] + 1 }}{% if not loop.last %}, {% endif %}
-                {% endfor %}
+                {% if b.rows and b.cols %}
+                    {% for i in range(b.rows|length) %}
+                        {{ "ABCDEFGHIJKLMNOP"[b.rows[i]] }}{{ b.cols[i] + 1 }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                {% else %}
+                    No seats
+                {% endif %}
             </p>
-            <p><strong>Total:</strong> Rs. {{ b.total_price }}</p>
+
+            <p><strong>Ticket Amount:</strong> Rs. {{ b.ticket_total }}</p>
+
+            {% if b.foods and b.foods|length > 0 %}
+                <p><strong>Food:</strong>
+                    {% for f in b.foods %}
+                        {{ f.quantity }}x {{ f.name }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+                <p><strong>Food Total:</strong> Rs. {{ b.food_total }}</p>
+            {% endif %}
+
+            <p style="font-size: 1.2em; color:#ffcc00; margin-top:10px;">
+                <strong>Total: Rs. {{ b.total_price }}</strong>
+            </p>
         </div>
         {% endfor %}
     {% endif %}
