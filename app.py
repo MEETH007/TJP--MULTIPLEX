@@ -10,7 +10,8 @@ movie_list = [
     "Odyssey (IMAX)",
     "Avengers Doomsday (Pre booking)",
     "Spider-Man: BRAND NEW DAY",
-    "Dune: Part THREE (IMAX) (Pre booking)"
+    "Dune: Part THREE (IMAX) (Pre booking)",
+    "AVENGERS: ENDGAME"
 ]
 
 times = ["10:00 AM", "01:30 PM", "04:00 PM", "07:30 PM"]
