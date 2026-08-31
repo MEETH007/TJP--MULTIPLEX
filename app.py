@@ -4,10 +4,9 @@ import os
 
 app = Flask(__name__)
 
-# ========== PASTE YOUR REAL KEYS HERE ==========
+# Your Supabase credentials
 SUPABASE_URL = "https://dkrouadnjzwztcsytlff.supabase.co"
 SUPABASE_KEY = "sb_publishable_IiaYKeKYqP01AtY3g-thrw_K0xTdewa"
-# ==============================================
 
 @app.route("/")
 def home():
@@ -17,8 +16,8 @@ def home():
         
         return f"""
         <h1 style="color:green;">Supabase Connected Successfully!</h1>
-        <p>Your database is working.</p>
-        <p>Number of records found: {len(result.data)}</p>
+        <p>Your database is working correctly.</p>
+        <p>Records found: {len(result.data)}</p>
         """
     except Exception as e:
         return f"""
