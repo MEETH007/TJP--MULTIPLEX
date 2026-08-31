@@ -5,28 +5,19 @@
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
         {% for i in range(shows|length) %}
-            {% set ns = namespace(available=0) %}
-            {% for row in shows[i].seats %}
-                {% for seat in row %}
-                    {% if seat == False %}
-                        {% set ns.available = ns.available + 1 %}
-                    {% endif %}
-                {% endfor %}
-            {% endfor %}
-
             <div style="background: rgba(0,0,0,0.4); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,204,0,0.3);">
                 <h3 style="color:#ffcc00; margin-bottom: 8px;">{{ shows[i].movie }}</h3>
                 <p style="color:#ccc; margin-bottom: 12px;">{{ shows[i].time }}</p>
                 
                 <p style="margin-bottom: 15px;">
-                    {% if ns.available == 0 %}
+                    {% if shows[i].available == 0 %}
                         <span style="color:#ff4444; font-weight:bold;">Sold Out</span>
                     {% else %}
-                        <span style="color:#2ecc71;">{{ ns.available }} seats left</span>
+                        <span style="color:#2ecc71;">{{ shows[i].available }} seats left</span>
                     {% endif %}
                 </p>
 
-                {% if ns.available > 0 %}
+                {% if shows[i].available > 0 %}
                     <a href="{{ url_for('seats', show_id=i) }}" class="btn" style="width:100%; text-align:center;">Select Seats</a>
                 {% else %}
                     <button class="btn" style="width:100%; background:#555; cursor:not-allowed;" disabled>Sold Out</button>
