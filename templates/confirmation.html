@@ -12,16 +12,7 @@
         <!-- QR CODE -->
         <div style="text-align:center; margin: 25px 0;">
             <p style="margin-bottom:10px;"><strong>Scan at Entrance:</strong></p>
-
-            {% set qr_data = "TJP CINEMA TICKET\nTicket ID: " ~ b.ticket_id ~ "\nName: " ~ b.name ~ "\nMovie: " ~ b.movie ~ "\nTime: " ~ b.show_time ~ "\nSeats: " %}
-            {% for i in range(b.rows|length) %}
-                {% set qr_data = qr_data ~ "ABCDEFGHIJKLMNOP"[b.rows[i]] ~ (b.cols[i] + 1)|string %}
-                {% if not loop.last %}
-                    {% set qr_data = qr_data ~ ", " %}
-                {% endif %}
-            {% endfor %}
-
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={{ qr_data|urlencode }}" 
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={{ b.ticket_id }}" 
                  alt="QR Code"
                  style="border: 12px solid white; border-radius: 15px; background: white;">
         </div>
@@ -30,22 +21,9 @@
         <p><strong>Age:</strong> {{ b.age }}</p>
         <p><strong>Movie:</strong> {{ b.movie }}</p>
         <p><strong>Show Time:</strong> {{ b.show_time }}</p>
-        <p><strong>Seats:</strong>
-            {% for i in range(b.rows|length) %}
-                {{ "ABCDEFGHIJKLMNOP"[b.rows[i]] }}{{ b.cols[i] + 1 }}{% if not loop.last %}, {% endif %}
-            {% endfor %}
-        </p>
+        <p><strong>Seats:</strong> {{ b.seats }}</p>
         <p><strong>Ticket Amount:</strong> Rs. {{ b.ticket_total }}</p>
-
-        {% if b.foods %}
-            <p><strong>Food:</strong></p>
-            <ul style="margin-left: 20px;">
-            {% for f in b.foods %}
-                <li>{{ f.quantity }} × {{ f.name }} = Rs. {{ f.price * f.quantity }}</li>
-            {% endfor %}
-            </ul>
-            <p><strong>Food Total:</strong> Rs. {{ b.food_total }}</p>
-        {% endif %}
+        <p><strong>Food Total:</strong> Rs. {{ b.food_total }}</p>
 
         <hr style="border-color:#555; margin: 20px 0;">
         <p style="font-size:1.5em; color:#ffcc00;"><strong>GRAND TOTAL: Rs. {{ b.total_price }}</strong></p>
