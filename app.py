@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 # Your Supabase credentials
 SUPABASE_URL = "https://dkrouadnjzwztcsytlff.supabase.co"
-SUPABASE_KEY = "sb_publishable_IiaYKeKYqP01AtY3g-thrw_K0xTdewa"
+SUPABASE_KEY = "sb_publishable_baohE1E0UANsGgcfR3LnTA_0MlYmcFp"
 
 @app.route("/")
 def home():
