@@ -17,11 +17,7 @@
             <p><strong>Name:</strong> {{ result.name }}</p>
             <p><strong>Movie:</strong> {{ result.movie }}</p>
             <p><strong>Time:</strong> {{ result.show_time }}</p>
-            <p><strong>Seats:</strong>
-                {% for i in range(result.rows|length) %}
-                    {{ "ABCDEFGHIJKLMNOP"[result.rows[i]] }}{{ result.cols[i] + 1 }}{% if not loop.last %}, {% endif %}
-                {% endfor %}
-            </p>
+            <p><strong>Seats:</strong> {{ result.seats }}</p>
             <p><strong>Total Paid:</strong> Rs. {{ result.total_price }}</p>
         </div>
     {% elif request.method == "POST" %}
