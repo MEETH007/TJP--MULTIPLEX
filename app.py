@@ -29,13 +29,12 @@ def get_show_key(movie, time):
     return f"{movie}|{time}"
 
 def initialize_seats():
-    """Create all seats in the database if they don't exist yet"""
     try:
         result = supabase.table("seats").select("id").limit(1).execute()
         if result.data:
-            return  # Seats already exist
+            return
 
-        print("Initializing seats... Please wait")
+        print("Initializing seats... this may take a minute")
         seats_to_insert = []
         for movie in movie_list:
             for time in times:
@@ -49,47 +48,66 @@ def initialize_seats():
                             "is_booked": False
                         })
 
-        # Insert in batches of 500
-        for i in range(0, len(seats_to_insert), 500):
-            batch = seats_to_insert[i:i+500]
+        for i in range(0, len(seats_to_insert), 400):
+            batch = seats_to_insert[i:i+400]
             supabase.table("seats").insert(batch).execute()
-        print("Seats initialized successfully!")
+        print("Seats initialized!")
     except Exception as e:
-        print("Error initializing seats:", str(e))
+        print("Init error:", str(e))
+
+def get_available_count(movie, time):
+    show_key = get_show_key(movie, time)
+    result = supabase.table("seats")\
+        .select("id", count="exact")\
+        .eq("show_key", show_key)\
+        .eq("is_booked", False)\
+        .execute()
+    return result.count or 0
 
 def get_seats_for_show(movie, time):
     show_key = get_show_key(movie, time)
-    result = supabase.table("seats").select("row, col, is_booked").eq("show_key", show_key).execute()
+    result = supabase.table("seats")\
+        .select("row, col, is_booked")\
+        .eq("show_key", show_key)\
+        .execute()
     
     seats = [[False for _ in range(COLS)] for _ in range(ROWS)]
     for item in result.data:
         seats[item["row"]][item["col"]] = item["is_booked"]
     return seats
 
-def get_all_shows():
+@app.route("/")
+def index():
     shows = []
     for movie in movie_list:
         for time in times:
-            seats = get_seats_for_show(movie, time)
+            available = get_available_count(movie, time)
             shows.append({
                 "movie": movie,
                 "time": time,
-                "seats": seats
+                "available": available
             })
-    return shows
-
-@app.route("/")
-def index():
-    shows = get_all_shows()
     return render_template("index.html", shows=shows)
 
 @app.route("/seats/<int:show_id>")
 def seats(show_id):
-    shows = get_all_shows()
-    if show_id < 0 or show_id >= len(shows):
+    all_shows = []
+    for movie in movie_list:
+        for time in times:
+            all_shows.append({"movie": movie, "time": time})
+
+    if show_id < 0 or show_id >= len(all_shows):
         flash("Invalid show")
         return redirect(url_for("index"))
-    show = shows[show_id]
+
+    show_info = all_shows[show_id]
+    seats_data = get_seats_for_show(show_info["movie"], show_info["time"])
+
+    show = {
+        "movie": show_info["movie"],
+        "time": show_info["time"],
+        "seats": seats_data
+    }
     return render_template("seats.html", show=show, show_id=show_id, rows=ROWS, cols=COLS)
 
 @app.route("/book", methods=["POST"])
@@ -99,15 +117,20 @@ def book():
     age = request.form.get("age", "0")
     selected_seats = request.form.getlist("seats")
 
-    shows = get_all_shows()
-    if show_id < 0 or show_id >= len(shows):
+    all_shows = []
+    for movie in movie_list:
+        for time in times:
+            all_shows.append({"movie": movie, "time": time})
+
+    if show_id < 0 or show_id >= len(all_shows):
         flash("Invalid show")
         return redirect(url_for("index"))
 
-    show = shows[show_id]
+    show_info = all_shows[show_id]
+    current_seats = get_seats_for_show(show_info["movie"], show_info["time"])
 
     if not name or not selected_seats:
-        flash("Please enter name and select at least one seat")
+        flash("Please enter name and select seats")
         return redirect(url_for("seats", show_id=show_id))
 
     try:
@@ -118,7 +141,7 @@ def book():
         flash("Invalid age")
         return redirect(url_for("seats", show_id=show_id))
 
-    ticket_price = 650.0 if "IMAX" in show["movie"] else 250.0
+    ticket_price = 650.0 if "IMAX" in show_info["movie"] else 250.0
     sel_rows = []
     sel_cols = []
 
@@ -127,15 +150,15 @@ def book():
         col = int(seat[1:]) - 1
         row = ord(row_char) - 65
 
-        if show["seats"][row][col]:
+        if current_seats[row][col]:
             flash(f"Seat {seat} is already booked!")
             return redirect(url_for("seats", show_id=show_id))
 
         sel_rows.append(row)
         sel_cols.append(col)
 
-    # Mark seats as booked in Supabase
-    show_key = get_show_key(show["movie"], show["time"])
+    # Mark seats as booked
+    show_key = get_show_key(show_info["movie"], show_info["time"])
     for r, c in zip(sel_rows, sel_cols):
         supabase.table("seats").update({"is_booked": True})\
             .eq("show_key", show_key).eq("row", r).eq("col", c).execute()
@@ -148,8 +171,8 @@ def book():
         "rows": sel_rows,
         "cols": sel_cols,
         "ticket_total": ticket_total,
-        "movie": show["movie"],
-        "show_time": show["time"]
+        "movie": show_info["movie"],
+        "show_time": show_info["time"]
     }
 
     return redirect(url_for("food"))
@@ -181,17 +204,14 @@ def food():
 
         data = session["booking"]
 
-        # Generate ticket ID
         result = supabase.table("bookings").select("id").order("id", desc=True).limit(1).execute()
         next_num = 1001
         if result.data:
             next_num = 1000 + result.data[0]["id"] + 1
 
         ticket_id = f"TJP{next_num}"
-
         seats_str = ", ".join([f"{chr(65 + r)}{c + 1}" for r, c in zip(data["rows"], data["cols"])])
 
-        # Save booking permanently
         supabase.table("bookings").insert({
             "ticket_id": ticket_id,
             "name": data["name"],
@@ -216,8 +236,7 @@ def confirmation(ticket_id):
     if not result.data:
         flash("Ticket not found")
         return redirect(url_for("index"))
-    b = result.data[0]
-    return render_template("confirmation.html", b=b)
+    return render_template("confirmation.html", b=result.data[0])
 
 @app.route("/bookings")
 def view_bookings():
@@ -234,7 +253,7 @@ def scan():
             result = res.data[0]
     return render_template("scan.html", result=result)
 
-# Initialize seats when the app starts
+# Run once at startup
 initialize_seats()
 
 if __name__ == "__main__":
