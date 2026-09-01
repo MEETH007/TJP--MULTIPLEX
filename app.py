@@ -237,38 +237,45 @@ def food():
         # ===== Send Email using Resend =====
         try:
             email_html = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-                <h2 style="color: #ffcc00;">TJP Cinema - Booking Confirmation</h2>
-                <p>Dear {data['name']},</p>
-                <p>Your ticket has been successfully booked!</p>
-                
-                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                    <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Ticket ID</strong></td>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{ticket_id}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Movie</strong></td>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['movie']}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Show Time</strong></td>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['show_time']}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Seats</strong></td>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{seats_str}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Paid</strong></td>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">Rs. {total_price}</td>
-                    </tr>
-                </table>
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
+    <h2 style="color: #d4a017;">TJP Cinema - Booking Confirmation</h2>
+    <p>Dear {data['name']},</p>
+    <p>Your ticket has been successfully booked!</p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Ticket ID</strong></td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{ticket_id}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Movie</strong></td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['movie']}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Show Time</strong></td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['show_time']}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Seats</strong></td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{seats_str}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Paid</strong></td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">Rs. {total_price}</td>
+        </tr>
+    </table>
 
-                <p>Please show this email or the QR code at the entrance.</p>
-                <p>Thank you for booking with <strong>TJP Cinema</strong>!</p>
-            </div>
-            """
+    <div style="text-align: center; margin: 30px 0;">
+        <p><strong>Scan this QR Code at the entrance:</strong></p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={ticket_id}" 
+             alt="QR Code" width="200" height="200" style="border: 6px solid #eee;">
+        <p style="font-size: 13px; color: #666;">Ticket ID: {ticket_id}</p>
+    </div>
+
+    <p>Please show this email or the QR code at the entrance.</p>
+    <p>Thank you for booking with <strong>TJP Cinema</strong>!</p>
+</div>
+"""
 
             resend.Emails.send({
                 "from": "TJP Cinema <onboarding@resend.dev>",
