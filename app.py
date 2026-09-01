@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from supabase import create_client
+import resend
 import json
 import os
 
@@ -10,6 +11,10 @@ app.secret_key = "tjp-cinema-secret-2026"
 SUPABASE_URL = "https://dkrouadnjzwztcsytlff.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcm91YWRuanp3enRjc3l0bGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMDQ2MzEsImV4cCI6MjEwMzU4MDYzMX0.pv24V4QMbvrtf8KvO8jWh6ZHQnWSaFYR0XhenpixO5Q"
 # =======================================
+
+# ========== Resend Email Key ==========
+resend.api_key = os.environ.get("RESEND_API_KEY")   # ← Paste your Resend API key here
+# =====================================
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -34,7 +39,7 @@ def initialize_seats():
         if result.data:
             return
 
-        print("Initializing seats... this may take a minute")
+        print("Initializing seats...")
         seats_to_insert = []
         for movie in movie_list:
             for time in times:
@@ -114,6 +119,7 @@ def seats(show_id):
 def book():
     show_id = int(request.form.get("show_id"))
     name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
     age = request.form.get("age", "0")
     selected_seats = request.form.getlist("seats")
 
@@ -129,8 +135,8 @@ def book():
     show_info = all_shows[show_id]
     current_seats = get_seats_for_show(show_info["movie"], show_info["time"])
 
-    if not name or not selected_seats:
-        flash("Please enter name and select seats")
+    if not name or not email or not selected_seats:
+        flash("Please enter name, email and select seats")
         return redirect(url_for("seats", show_id=show_id))
 
     try:
@@ -167,6 +173,7 @@ def book():
 
     session["booking"] = {
         "name": name,
+        "email": email,
         "age": age,
         "rows": sel_rows,
         "cols": sel_cols,
@@ -211,7 +218,9 @@ def food():
 
         ticket_id = f"TJP{next_num}"
         seats_str = ", ".join([f"{chr(65 + r)}{c + 1}" for r, c in zip(data["rows"], data["cols"])])
+        total_price = data["ticket_total"] + food_total
 
+        # Save booking to Supabase
         supabase.table("bookings").insert({
             "ticket_id": ticket_id,
             "name": data["name"],
@@ -221,9 +230,56 @@ def food():
             "seats": seats_str,
             "ticket_total": data["ticket_total"],
             "food_total": food_total,
-            "total_price": data["ticket_total"] + food_total,
+            "total_price": total_price,
             "foods": json.dumps(foods)
         }).execute()
+
+        # ===== Send Email using Resend =====
+        try:
+            email_html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <h2 style="color: #ffcc00;">TJP Cinema - Booking Confirmation</h2>
+                <p>Dear {data['name']},</p>
+                <p>Your ticket has been successfully booked!</p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Ticket ID</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{ticket_id}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Movie</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['movie']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Show Time</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['show_time']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Seats</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{seats_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Paid</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">Rs. {total_price}</td>
+                    </tr>
+                </table>
+
+                <p>Please show this email or the QR code at the entrance.</p>
+                <p>Thank you for booking with <strong>TJP Cinema</strong>!</p>
+            </div>
+            """
+
+            resend.Emails.send({
+                "from": "TJP Cinema <onboarding@resend.dev>",
+                "to": [data["email"]],
+                "subject": f"Your Ticket - {ticket_id} | TJP Cinema",
+                "html": email_html
+            })
+            print("Email sent successfully to", data["email"])
+        except Exception as e:
+            print("Email sending failed:", str(e))
+        # ==================================
 
         session.pop("booking", None)
         return redirect(url_for("confirmation", ticket_id=ticket_id))
@@ -253,7 +309,7 @@ def scan():
             result = res.data[0]
     return render_template("scan.html", result=result)
 
-# Run once at startup
+# Initialize seats
 initialize_seats()
 
 if __name__ == "__main__":
