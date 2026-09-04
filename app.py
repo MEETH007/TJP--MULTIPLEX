@@ -1,20 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from supabase import create_client
-import resend
+import requests
 import json
 import os
 
 app = Flask(__name__)
 app.secret_key = "tjp-cinema-secret-2026"
 
-# ========== Your Supabase Keys ==========
+# ========== Supabase Keys ==========
 SUPABASE_URL = "https://dkrouadnjzwztcsytlff.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcm91YWRuanp3enRjc3l0bGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMDQ2MzEsImV4cCI6MjEwMzU4MDYzMX0.pv24V4QMbvrtf8KvO8jWh6ZHQnWSaFYR0XhenpixO5Q"
-# =======================================
-
-# ========== Resend Email Key ==========
-resend.api_key = os.environ.get("RESEND_API_KEY")   # ← Paste your Resend API key here
-# =====================================
+# ==================================
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -234,56 +230,83 @@ def food():
             "foods": json.dumps(foods)
         }).execute()
 
-        # ===== Send Email using Resend =====
+        # ===== Send Email using Brevo =====
         try:
+            brevo_api_key = os.environ.get("BREVO_API_KEY")
+            sender_email = os.environ.get("BREVO_SENDER_EMAIL")
+
             email_html = f"""
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
-    <h2 style="color: #d4a017;">TJP Cinema - Booking Confirmation</h2>
-    <p>Dear {data['name']},</p>
-    <p>Your ticket has been successfully booked!</p>
-    
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-        <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Ticket ID</strong></td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{ticket_id}</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Movie</strong></td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['movie']}</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Show Time</strong></td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['show_time']}</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Seats</strong></td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{seats_str}</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Paid</strong></td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">Rs. {total_price}</td>
-        </tr>
-    </table>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <h2 style="color: #d4a017;">TJP Cinema - Booking Confirmation</h2>
+                <p>Dear {data['name']},</p>
+                <p>Your ticket has been successfully booked!</p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Ticket ID</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{ticket_id}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Movie</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['movie']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Show Time</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['show_time']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Seats</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{seats_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Paid</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">Rs. {total_price}</td>
+                    </tr>
+                </table>
 
-    <div style="text-align: center; margin: 30px 0;">
-        <p><strong>Scan this QR Code at the entrance:</strong></p>
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={ticket_id}" 
-             alt="QR Code" width="200" height="200" style="border: 6px solid #eee;">
-        <p style="font-size: 13px; color: #666;">Ticket ID: {ticket_id}</p>
-    </div>
+                <div style="text-align: center; margin: 30px 0;">
+                    <p><strong>Scan this QR Code at the entrance:</strong></p>
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={ticket_id}" 
+                         alt="QR Code" width="200" height="200">
+                </div>
 
-    <p>Please show this email or the QR code at the entrance.</p>
-    <p>Thank you for booking with <strong>TJP Cinema</strong>!</p>
-</div>
-"""
+                <p>Please show this email or the QR code at the entrance.</p>
+                <p>Thank you for booking with <strong>TJP Cinema</strong>!</p>
+            </div>
+            """
 
-            resend.Emails.send({
-                "from": "TJP Cinema <onboarding@resend.dev>",
-                "to": [data["email"]],
+            payload = {
+                "sender": {
+                    "name": "TJP Cinema",
+                    "email": sender_email
+                },
+                "to": [
+                    {
+                        "email": data["email"],
+                        "name": data["name"]
+                    }
+                ],
                 "subject": f"Your Ticket - {ticket_id} | TJP Cinema",
-                "html": email_html
-            })
-            print("Email sent successfully to", data["email"])
+                "htmlContent": email_html
+            }
+
+            headers = {
+                "accept": "application/json",
+                "api-key": brevo_api_key,
+                "content-type": "application/json"
+            }
+
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json=payload,
+                headers=headers
+            )
+
+            if response.status_code in [200, 201]:
+                print("Email sent successfully via Brevo")
+            else:
+                print("Brevo Error:", response.text)
+
         except Exception as e:
             print("Email sending failed:", str(e))
         # ==================================
