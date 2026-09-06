@@ -1,63 +1,346 @@
-from flask import Flask
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from supabase import create_client
 import requests
+import json
 import os
 
 app = Flask(__name__)
+app.secret_key = "tjp-cinema-secret-2026"
+
+# ========== Supabase Keys ==========
+SUPABASE_URL = "https://dkrouadnjzwztcsytlff.supabase.co"
+SUPABASE_KEY = "sb_publishable_IiaYKeKYqP01AtY3g-thrw_K0xTdewa"
+# ==================================
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+ROWS = 16
+COLS = 34
+
+movie_list = [
+    "Odyssey (IMAX)",
+    "Avengers Doomsday (Pre booking)",
+    "Spider-Man: BRAND NEW DAY",
+    "Dune: Part THREE (IMAX) (Pre booking)"
+]
+
+times = ["10:00 AM", "01:30 PM", "04:00 PM", "07:30 PM"]
+
+def get_show_key(movie, time):
+    return f"{movie}|{time}"
+
+def initialize_seats():
+    try:
+        result = supabase.table("seats").select("id").limit(1).execute()
+        if result.data:
+            return
+
+        print("Initializing seats...")
+        seats_to_insert = []
+        for movie in movie_list:
+            for time in times:
+                show_key = get_show_key(movie, time)
+                for r in range(ROWS):
+                    for c in range(COLS):
+                        seats_to_insert.append({
+                            "show_key": show_key,
+                            "row": r,
+                            "col": c,
+                            "is_booked": False
+                        })
+
+        for i in range(0, len(seats_to_insert), 400):
+            batch = seats_to_insert[i:i+400]
+            supabase.table("seats").insert(batch).execute()
+        print("Seats initialized!")
+    except Exception as e:
+        print("Init error:", str(e))
+
+def get_available_count(movie, time):
+    show_key = get_show_key(movie, time)
+    result = supabase.table("seats")\
+        .select("id", count="exact")\
+        .eq("show_key", show_key)\
+        .eq("is_booked", False)\
+        .execute()
+    return result.count or 0
+
+def get_seats_for_show(movie, time):
+    show_key = get_show_key(movie, time)
+    result = supabase.table("seats")\
+        .select("row, col, is_booked")\
+        .eq("show_key", show_key)\
+        .execute()
+    
+    seats = [[False for _ in range(COLS)] for _ in range(ROWS)]
+    for item in result.data:
+        seats[item["row"]][item["col"]] = item["is_booked"]
+    return seats
 
 @app.route("/")
-def home():
-    brevo_api_key = os.environ.get("BREVO_API_KEY")
-    sender_email = os.environ.get("BREVO_SENDER_EMAIL")
+def index():
+    shows = []
+    for movie in movie_list:
+        for time in times:
+            available = get_available_count(movie, time)
+            shows.append({
+                "movie": movie,
+                "time": time,
+                "available": available
+            })
+    return render_template("index.html", shows=shows)
 
-    if not brevo_api_key:
-        return "<h2 style='color:red;'>BREVO_API_KEY is missing in Environment Variables</h2>"
+@app.route("/seats/<int:show_id>")
+def seats(show_id):
+    all_shows = []
+    for movie in movie_list:
+        for time in times:
+            all_shows.append({"movie": movie, "time": time})
 
-    if not sender_email:
-        return "<h2 style='color:red;'>BREVO_SENDER_EMAIL is missing in Environment Variables</h2>"
+    if show_id < 0 or show_id >= len(all_shows):
+        flash("Invalid show")
+        return redirect(url_for("index"))
 
-    # Test payload
-    payload = {
-        "sender": {
-            "name": "TJP Cinema Test",
-            "email": sender_email
-        },
-        "to": [
-            {
-                "email": sender_email,  # sending to yourself for testing
-                "name": "Test User"
-            }
-        ],
-        "subject": "Brevo Test Email from TJP Cinema",
-        "htmlContent": "<h2>This is a test email</h2><p>If you received this, Brevo is working correctly!</p>"
+    show_info = all_shows[show_id]
+    seats_data = get_seats_for_show(show_info["movie"], show_info["time"])
+
+    show = {
+        "movie": show_info["movie"],
+        "time": show_info["time"],
+        "seats": seats_data
     }
+    return render_template("seats.html", show=show, show_id=show_id, rows=ROWS, cols=COLS)
 
-    headers = {
-        "accept": "application/json",
-        "api-key": brevo_api_key,
-        "content-type": "application/json"
-    }
+@app.route("/book", methods=["POST"])
+def book():
+    show_id = int(request.form.get("show_id"))
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
+    age = request.form.get("age", "0")
+    selected_seats = request.form.getlist("seats")
+
+    all_shows = []
+    for movie in movie_list:
+        for time in times:
+            all_shows.append({"movie": movie, "time": time})
+
+    if show_id < 0 or show_id >= len(all_shows):
+        flash("Invalid show")
+        return redirect(url_for("index"))
+
+    show_info = all_shows[show_id]
+    current_seats = get_seats_for_show(show_info["movie"], show_info["time"])
+
+    if not name or not email or not selected_seats:
+        flash("Please enter name, email and select seats")
+        return redirect(url_for("seats", show_id=show_id))
 
     try:
-        response = requests.post(
-            "https://api.brevo.com/v3/smtp/email",
-            json=payload,
-            headers=headers
-        )
+        age = int(age)
+        if age < 1 or age > 120:
+            raise ValueError
+    except:
+        flash("Invalid age")
+        return redirect(url_for("seats", show_id=show_id))
 
-        if response.status_code in [200, 201]:
-            return f"""
-            <h2 style='color:green;'>Success! Email sent successfully.</h2>
-            <p>Check your inbox: <strong>{sender_email}</strong></p>
-            <pre>{response.text}</pre>
+    ticket_price = 650.0 if "IMAX" in show_info["movie"] else 250.0
+    sel_rows = []
+    sel_cols = []
+
+    for seat in selected_seats:
+        row_char = seat[0]
+        col = int(seat[1:]) - 1
+        row = ord(row_char) - 65
+
+        if current_seats[row][col]:
+            flash(f"Seat {seat} is already booked!")
+            return redirect(url_for("seats", show_id=show_id))
+
+        sel_rows.append(row)
+        sel_cols.append(col)
+
+    # Mark seats as booked
+    show_key = get_show_key(show_info["movie"], show_info["time"])
+    for r, c in zip(sel_rows, sel_cols):
+        supabase.table("seats").update({"is_booked": True})\
+            .eq("show_key", show_key).eq("row", r).eq("col", c).execute()
+
+    ticket_total = len(sel_rows) * ticket_price
+
+    session["booking"] = {
+        "name": name,
+        "email": email,
+        "age": age,
+        "rows": sel_rows,
+        "cols": sel_cols,
+        "ticket_total": ticket_total,
+        "movie": show_info["movie"],
+        "show_time": show_info["time"]
+    }
+
+    return redirect(url_for("food"))
+
+@app.route("/food", methods=["GET", "POST"])
+def food():
+    if "booking" not in session:
+        return redirect(url_for("index"))
+
+    menu = {
+        1: ("Popcorn (Small)", 150),
+        2: ("Popcorn (Large)", 250),
+        3: ("Soft Drink", 120),
+        4: ("Nachos with Cheese", 200),
+        5: ("Combo (Popcorn + Drink)", 320),
+        6: ("Bottled Water", 50)
+    }
+
+    if request.method == "POST":
+        foods = []
+        food_total = 0.0
+
+        for key in menu:
+            qty = int(request.form.get(f"qty_{key}", 0) or 0)
+            if qty > 0:
+                fname, price = menu[key]
+                foods.append({"name": fname, "quantity": qty, "price": price})
+                food_total += price * qty
+
+        data = session["booking"]
+
+        result = supabase.table("bookings").select("id").order("id", desc=True).limit(1).execute()
+        next_num = 1001
+        if result.data:
+            next_num = 1000 + result.data[0]["id"] + 1
+
+        ticket_id = f"TJP{next_num}"
+        seats_str = ", ".join([f"{chr(65 + r)}{c + 1}" for r, c in zip(data["rows"], data["cols"])])
+        total_price = data["ticket_total"] + food_total
+
+        # Save booking to Supabase
+        supabase.table("bookings").insert({
+            "ticket_id": ticket_id,
+            "name": data["name"],
+            "age": data["age"],
+            "movie": data["movie"],
+            "show_time": data["show_time"],
+            "seats": seats_str,
+            "ticket_total": data["ticket_total"],
+            "food_total": food_total,
+            "total_price": total_price,
+            "foods": json.dumps(foods)
+        }).execute()
+
+        # ===== Send Email using Brevo =====
+        try:
+            brevo_api_key = os.environ.get("BREVO_API_KEY")
+            sender_email = os.environ.get("BREVO_SENDER_EMAIL")
+
+            email_html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <h2 style="color: #d4a017;">TJP Cinema - Booking Confirmation</h2>
+                <p>Dear {data['name']},</p>
+                <p>Your ticket has been successfully booked!</p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Ticket ID</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{ticket_id}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Movie</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['movie']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Show Time</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{data['show_time']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Seats</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{seats_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Paid</strong></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">Rs. {total_price}</td>
+                    </tr>
+                </table>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <p><strong>Scan this QR Code at the entrance:</strong></p>
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={ticket_id}" 
+                         alt="QR Code" width="200" height="200">
+                </div>
+
+                <p>Please show this email or the QR code at the entrance.</p>
+                <p>Thank you for booking with <strong>TJP Cinema</strong>!</p>
+            </div>
             """
-        else:
-            return f"""
-            <h2 style='color:red;'>Brevo Error</h2>
-            <p>Status Code: {response.status_code}</p>
-            <pre>{response.text}</pre>
-            """
-    except Exception as e:
-        return f"<h2 style='color:red;'>Error:</h2><pre>{str(e)}</pre>"
+
+            payload = {
+                "sender": {
+                    "name": "TJP Cinema",
+                    "email": sender_email
+                },
+                "to": [
+                    {
+                        "email": data["email"],
+                        "name": data["name"]
+                    }
+                ],
+                "subject": f"Your Ticket - {ticket_id} | TJP Cinema",
+                "htmlContent": email_html
+            }
+
+            headers = {
+                "accept": "application/json",
+                "api-key": brevo_api_key,
+                "content-type": "application/json"
+            }
+
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json=payload,
+                headers=headers
+            )
+
+            if response.status_code in [200, 201]:
+                print("Email sent successfully via Brevo")
+            else:
+                print("Brevo Error:", response.text)
+
+        except Exception as e:
+            print("Email sending failed:", str(e))
+        # ==================================
+
+        session.pop("booking", None)
+        return redirect(url_for("confirmation", ticket_id=ticket_id))
+
+    return render_template("food.html", menu=menu)
+
+@app.route("/confirmation/<ticket_id>")
+def confirmation(ticket_id):
+    result = supabase.table("bookings").select("*").eq("ticket_id", ticket_id).execute()
+    if not result.data:
+        flash("Ticket not found")
+        return redirect(url_for("index"))
+    return render_template("confirmation.html", b=result.data[0])
+
+@app.route("/bookings")
+def view_bookings():
+    result = supabase.table("bookings").select("*").order("id", desc=True).execute()
+    return render_template("bookings.html", bookings=result.data)
+
+@app.route("/scan", methods=["GET", "POST"])
+def scan():
+    result = None
+    if request.method == "POST":
+        tid = request.form.get("ticket_id", "").strip().upper()
+        res = supabase.table("bookings").select("*").eq("ticket_id", tid).execute()
+        if res.data:
+            result = res.data[0]
+    return render_template("scan.html", result=result)
+
+# Initialize seats
+initialize_seats()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
