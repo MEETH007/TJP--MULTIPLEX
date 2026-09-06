@@ -324,10 +324,25 @@ def confirmation(ticket_id):
         return redirect(url_for("index"))
     return render_template("confirmation.html", b=result.data[0])
 
-@app.route("/bookings")
+@app.route("/bookings", methods=["GET", "POST"])
 def view_bookings():
-    result = supabase.table("bookings").select("*").order("id", desc=True).execute()
-    return render_template("bookings.html", bookings=result.data)
+    password = "5240"   # ← Same password (you can change it)
+
+    # Check if already logged in
+    if session.get("bookings_logged_in"):
+        result = supabase.table("bookings").select("*").order("id", desc=True).execute()
+        return render_template("bookings.html", bookings=result.data)
+
+    if request.method == "POST":
+        entered = request.form.get("password", "")
+        if entered == password:
+            session["bookings_logged_in"] = True
+            return redirect(url_for("view_bookings"))
+        else:
+            flash("Wrong password!")
+            return redirect(url_for("view_bookings"))
+
+    return render_template("bookings_login.html")
 
 @app.route("/scan", methods=["GET", "POST"])
 def scan():
