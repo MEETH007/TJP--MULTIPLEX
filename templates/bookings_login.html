@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width: 400px; margin: 50px auto; text-align: center;">
+    <h2>View Bookings</h2>
+    <p style="color:#aaa; margin-bottom: 20px;">Enter password to view all bookings</p>
+
+    <form method="POST">
+        <input type="password" name="password" placeholder="Enter Password" required
+               style="padding: 12px; width: 100%; margin: 15px 0; border-radius: 8px; border: none; font-size: 16px;">
+        <br>
+        <button type="submit" class="btn">Login</button>
+    </form>
+</div>
+{% endblock %}
