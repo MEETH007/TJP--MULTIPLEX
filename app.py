@@ -345,3 +345,28 @@ initialize_seats()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+    
+@app.route("/admin/reset", methods=["GET", "POST"])
+def admin_reset():
+    password = "0425"   # ← Change this password if you want
+
+    if request.method == "POST":
+        entered = request.form.get("password", "")
+        if entered != password:
+            flash("Wrong password!")
+            return redirect(url_for("admin_reset"))
+
+        try:
+            # 1. Delete all bookings
+            supabase.table("bookings").delete().neq("id", 0).execute()
+
+            # 2. Reset all seats to available
+            supabase.table("seats").update({"is_booked": False}).neq("id", 0).execute()
+
+            flash("All bookings cleared and seats reset successfully!")
+            return redirect(url_for("index"))
+        except Exception as e:
+            flash(f"Error while resetting: {str(e)}")
+            return redirect(url_for("admin_reset"))
+
+    return render_template("admin_reset.html")
