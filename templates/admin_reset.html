@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width: 450px; margin: 50px auto; text-align: center;">
+    <h2>Admin Reset</h2>
+    <p style="color: #ff6b6b; margin: 15px 0;">
+        This will delete <strong>all bookings</strong> and make <strong>all seats available</strong> again.
+    </p>
+
+    <form method="POST">
+        <input type="password" name="password" placeholder="Enter Admin Password" required
+               style="padding: 12px; width: 100%; margin: 15px 0; border-radius: 8px; border: none; font-size: 16px;">
+        <br>
+        <button type="submit" class="btn" style="background: #e74c3c;">Reset Everything</button>
+    </form>
+
+    <br>
+    <a href="{{ url_for('index') }}" class="btn">Back to Home</a>
+</div>
+{% endblock %}
