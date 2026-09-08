@@ -12,6 +12,10 @@
         <button type="button" class="btn" onclick="zoomIn()" style="padding: 8px 16px;">Zoom In +</button>
     </div>
 
+    <p style="text-align:center; color:#ffcc00; margin-bottom:15px;">
+        You can select maximum <strong>8 seats</strong> only.
+    </p>
+
     <form method="POST" action="{{ url_for('book') }}">
         <input type="hidden" name="show_id" value="{{ show_id }}">
 
@@ -57,6 +61,7 @@
 
 <script>
     let currentZoom = 1;
+    const maxSeats = 8;
 
     function zoomIn() {
         if (currentZoom < 1.6) {
@@ -77,5 +82,17 @@
         currentZoom = 0.75;
         document.getElementById('seat-container').style.zoom = currentZoom;
     }
+
+    // Limit maximum seats to 8
+    document.querySelectorAll('input[name="seats"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            const selected = document.querySelectorAll('input[name="seats"]:checked');
+            if (selected.length > maxSeats) {
+                this.checked = false;
+                this.nextElementSibling.classList.remove('selected');
+                alert("You can select maximum " + maxSeats + " seats only.");
+            }
+        });
+    });
 </script>
 {% endblock %}
