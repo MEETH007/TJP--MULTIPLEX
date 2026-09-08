@@ -61,7 +61,7 @@
 
 <script>
     let currentZoom = 1;
-    const maxSeats = 8;
+    const maxSeats = 12;
 
     function zoomIn() {
         if (currentZoom < 1.6) {
@@ -83,7 +83,7 @@
         document.getElementById('seat-container').style.zoom = currentZoom;
     }
 
-    // Limit maximum seats to 8
+    // Limit maximum seats to 12
     document.querySelectorAll('input[name="seats"]').forEach(checkbox => {
         checkbox.addEventListener('change', function () {
             const selected = document.querySelectorAll('input[name="seats"]:checked');
