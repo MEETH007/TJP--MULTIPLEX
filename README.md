@@ -20,7 +20,7 @@ A lightweight, serverless movie ticket booking web application with automated em
 
 ## 🛠️ Architecture & Tech Stack
 
-* **Frontend:** Semantic HTML5, Modern Vanilla JavaScript, CSS3
+* **Frontend:** Semantic HTML5, CSS3
 * **Backend as a Service (BaaS):** [Supabase](https://supabase.com/) (PostgreSQL database, Row Level Security)
 * **Email Service:** [Brevo](https://www.brevo.com/) (Transactional API)
 * **Ticket Verification:** Client-side QR generation engine
