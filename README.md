@@ -2,7 +2,7 @@
 
 A lightweight, serverless movie ticket booking web application with automated email confirmations, dynamic QR-code ticket generation, and role-based administrative control.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Render-blue?style=for-the-badge&logo=render)](https://your-app-name.onrender.com)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Render-blue?style=for-the-badge&logo=render)](https://tjp-multiplex-utsw.onrender.com)
 [![Database](https://img.shields.io/badge/Database-Supabase-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
 [![Mailing](https://img.shields.io/badge/Mails-Brevo-0B99FF?style=for-the-badge)](https://www.brevo.com)
 
