@@ -8,8 +8,8 @@ app = Flask(__name__)
 app.secret_key = "tjp-cinema-secret-2026"
 
 # ========== Supabase Keys ==========
-SUPABASE_URL = "https://dkrouadnjzwztcsytlff.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcm91YWRuanp3enRjc3l0bGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMDQ2MzEsImV4cCI6MjEwMzU4MDYzMX0.pv24V4QMbvrtf8KvO8jWh6ZHQnWSaFYR0XhenpixO5Q"
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 # ==================================
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
