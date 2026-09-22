@@ -326,7 +326,7 @@ def confirmation(ticket_id):
 
 @app.route("/bookings", methods=["GET", "POST"])
 def view_bookings():
-    password = "5240"   # ← Same password (you can change it)
+    BOOKINGS_PASSWORD = os.environ.get("BOOKINGS_PASSWORD", "admin123")
 
     # Check if already logged in
     if session.get("bookings_logged_in"):
@@ -363,7 +363,7 @@ if __name__ == "__main__":
     
 @app.route("/admin/reset", methods=["GET", "POST"])
 def admin_reset():
-    password = "0425"   # ← Change this password if you want
+    ADMIN_RESET_PASSWORD = os.environ.get("ADMIN_RESET_PASSWORD", "reset123")
 
     if request.method == "POST":
         entered = request.form.get("password", "")
