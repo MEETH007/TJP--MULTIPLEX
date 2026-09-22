@@ -1,26 +1,51 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card">
-    <h2 style="text-align:center;">Food & Beverages</h2>
-    <p style="text-align:center; color:#aaa; margin-bottom:25px;">Optional – You can skip if you don’t want any</p>
+<div class="card" style="max-width: 680px; margin: auto;">
+    <h2 style="text-align:center; color: var(--primary);">Cinema Concessions</h2>
+    <p style="text-align:center; color: var(--text-muted); margin-bottom: 25px;">Optional — select snacks or proceed directly to checkout.</p>
 
     <form method="POST">
-        <div style="display: grid; gap: 15px;">
+        <div style="display: flex; flex-direction: column; gap: 14px;">
             {% for key, item in menu.items() %}
-            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="background: rgba(0,0,0,0.3); padding: 16px 20px; border-radius: var(--radius-sm); border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>{{ item[0] }}</strong><br>
-                    <span style="color:#ffcc00;">Rs. {{ item[1] }}</span>
+                    <strong style="font-size: 1.05rem;">{{ item[0] }}</strong><br>
+                    <span style="color: var(--primary); font-weight: 600;">Rs. {{ item[1] }}</span>
                 </div>
-                <input type="number" name="qty_{{ key }}" value="0" min="0" max="10" 
-                       style="width: 70px; padding: 8px; border-radius: 8px; border: none; text-align: center; font-size: 16px;">
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted);">Qty:</label>
+                    <input type="number" name="qty_{{ key }}" data-price="{{ item[1] }}" class="food-qty" value="0" min="0" max="10" 
+                           style="width: 70px; text-align: center; font-weight: bold;">
+                </div>
             </div>
             {% endfor %}
         </div>
 
-        <div style="text-align:center; margin-top: 30px;">
-            <button type="submit" class="btn">Confirm Booking & Get Ticket</button>
+        <div style="margin-top: 25px; padding: 15px; background: rgba(0,0,0,0.4); border-radius: var(--radius-sm); text-align: center;">
+            <p style="font-size: 1rem; color: var(--text-muted);">Food Addition: <strong>Rs. <span id="food-sum">0</span></strong></p>
+        </div>
+
+        <div style="text-align:center; margin-top: 24px;">
+            <button type="submit" class="btn" style="padding: 14px 32px; font-size: 1rem;">Complete Booking & Issue Pass →</button>
         </div>
     </form>
 </div>
+
+<script>
+    const foodInputs = document.querySelectorAll('.food-qty');
+    const foodSumElem = document.getElementById('food-sum');
+
+    foodInputs.forEach(input => {
+        input.addEventListener('input', () => {
+            let sum = 0;
+            foodInputs.forEach(i => {
+                const qty = parseInt(i.value) || 0;
+                const price = parseFloat(i.getAttribute('data-price')) || 0;
+                sum += qty * price;
+            });
+            foodSumElem.textContent = sum.toLocaleString('en-IN');
+        });
+    });
+</script>
 {% endblock %}
