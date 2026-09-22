@@ -1,11 +1,15 @@
+import os
+import json
+import requests
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from supabase import create_client
-import requests
-import json
-import os
+
+# Load variables from .env file for local testing
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = "tjp-cinema-secret-2026"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "tjp-cinema-secret-2026")
 
 # ========== Supabase Keys ==========
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -328,14 +332,13 @@ def confirmation(ticket_id):
 def view_bookings():
     BOOKINGS_PASSWORD = os.environ.get("BOOKINGS_PASSWORD", "admin123")
 
-    # Check if already logged in
     if session.get("bookings_logged_in"):
         result = supabase.table("bookings").select("*").order("id", desc=True).execute()
         return render_template("bookings.html", bookings=result.data)
 
     if request.method == "POST":
         entered = request.form.get("password", "")
-        if entered == password:
+        if entered == BOOKINGS_PASSWORD:
             session["bookings_logged_in"] = True
             return redirect(url_for("view_bookings"))
         else:
@@ -354,20 +357,13 @@ def scan():
             result = res.data[0]
     return render_template("scan.html", result=result)
 
-# Initialize seats
-initialize_seats()
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
-    
 @app.route("/admin/reset", methods=["GET", "POST"])
 def admin_reset():
     ADMIN_RESET_PASSWORD = os.environ.get("ADMIN_RESET_PASSWORD", "reset123")
 
     if request.method == "POST":
         entered = request.form.get("password", "")
-        if entered != password:
+        if entered != ADMIN_RESET_PASSWORD:
             flash("Wrong password!")
             return redirect(url_for("admin_reset"))
 
@@ -385,3 +381,10 @@ def admin_reset():
             return redirect(url_for("admin_reset"))
 
     return render_template("admin_reset.html")
+
+# Initialize seats
+initialize_seats()
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
