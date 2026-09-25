@@ -33,7 +33,7 @@ MOVIES = [
         "title": "Odyssey (IMAX)",
         "screen": "Screen 1 • IMAX with Laser",
         "price": 650.0,
-        "poster_url": "https://upload.wikimedia.org/wikipedia/en/1/17/2001_A_Space_Odyssey_%281968%29_poster.jpg",
+        "poster_url": "https://dx35vtwkllhj9.cloudfront.net/universalstudios/the-odyssey/images/regions/ca/onesheet.jpg",
         "trailer_url": "https://www.youtube-nocookie.com/embed/f_bKjZeJBBI",
         "times": ["10:00 AM", "01:30 PM", "04:00 PM", "07:30 PM"]
     },
@@ -42,7 +42,7 @@ MOVIES = [
         "title": "Avengers Doomsday (Pre booking)",
         "screen": "Screen 2 • Dolby Atmos 4K",
         "price": 350.0,
-        "poster_url": "https://upload.wikimedia.org/wikipedia/en/0/0d/Avengers_Endgame_poster.jpg",
+        "poster_url": "https://www.impawards.com/2026/posters/avengers_doomsday_ver4.jpg",
         "trailer_url": "https://www.youtube-nocookie.com/embed/irVNGjRFZGk",
         "times": ["10:30 AM", "02:00 PM", "05:30 PM", "09:00 PM"]
     },
