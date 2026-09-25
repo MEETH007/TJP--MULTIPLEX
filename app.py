@@ -11,7 +11,6 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "tjp-cinema-secret-2026")
 
-# ========== Environment Keys ==========
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
@@ -20,12 +19,13 @@ ADMIN_REPORT_EMAIL = os.environ.get("ADMIN_REPORT_EMAIL", BREVO_SENDER_EMAIL)
 
 BOOKINGS_PASSWORD = os.environ.get("BOOKINGS_PASSWORD", "admin123")
 ADMIN_RESET_PASSWORD = os.environ.get("ADMIN_RESET_PASSWORD", "reset123")
-# =======================================
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ROWS = 16
-COLS = 34
+# 10 Rows (A-J) x 15 Columns = 150 Seats per auditorium (Fast rendering)
+ROWS = 10
+COLS = 15
+TOTAL_SEATS_PER_SHOW = ROWS * COLS
 
 MOVIES = [
     {
@@ -33,8 +33,8 @@ MOVIES = [
         "title": "Odyssey (IMAX)",
         "screen": "Screen 1 • IMAX with Laser",
         "price": 650.0,
-        "poster_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80",
-        "trailer_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        "poster_url": "https://m.media-amazon.com/images/M/MV5BMjExMjkwNTQ0Nl5BMl5BanBnXkFtZTcwNTk4NTMDQ@._V1_FMjpg_UX1000_.jpg",
+        "trailer_url": "https://www.youtube.com/watch?v=f_bKjZeJBBI",
         "times": ["10:00 AM", "01:30 PM", "04:00 PM", "07:30 PM"]
     },
     {
@@ -42,8 +42,8 @@ MOVIES = [
         "title": "Avengers Doomsday (Pre booking)",
         "screen": "Screen 2 • Dolby Atmos 4K",
         "price": 350.0,
-        "poster_url": "https://images.unsplash.com/photo-1635805737707-575885ab0820?w=600&auto=format&fit=crop&q=80",
-        "trailer_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        "poster_url": "https://m.media-amazon.com/images/M/MV5BYzA2Nzk5MTAtNGY1YS00OTFiLWIzZTAtODVlNWVkODBhZGEyXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
+        "trailer_url": "https://www.youtube.com/watch?v=irVNGjRFZGk&t=13s",
         "times": ["10:30 AM", "02:00 PM", "05:30 PM", "09:00 PM"]
     },
     {
@@ -51,8 +51,8 @@ MOVIES = [
         "title": "Spider-Man: BRAND NEW DAY",
         "screen": "Screen 3 • Prime 3D",
         "price": 300.0,
-        "poster_url": "https://images.unsplash.com/photo-1604200213928-ba3cf4fc8436?w=600&auto=format&fit=crop&q=80",
-        "trailer_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        "poster_url": "https://m.media-amazon.com/images/M/MV5BNTk4ODkxMTMtZTM3Ni00MWM1LTlmOGQtZjc3YjFlYzA1MGQ3XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
+        "trailer_url": "https://www.youtube.com/watch?v=62bIsvRcPv0",
         "times": ["11:00 AM", "02:30 PM", "06:00 PM", "09:30 PM"]
     },
     {
@@ -60,8 +60,8 @@ MOVIES = [
         "title": "Dune: Part THREE (IMAX)",
         "screen": "Screen 1 • IMAX with Laser",
         "price": 650.0,
-        "poster_url": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80",
-        "trailer_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        "poster_url": "https://m.media-amazon.com/images/M/MV5BN2QyZGUgkNmEtOWY4My00ODlkLWFhMzMtZjU5NmU1MmExYjg1XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
+        "trailer_url": "https://www.youtube.com/watch?v=NdvqHc56lE0",
         "times": ["10:15 AM", "01:45 PM", "05:15 PM", "08:45 PM"]
     },
     {
@@ -69,8 +69,8 @@ MOVIES = [
         "title": "Avengers : Endgame Encore",
         "screen": "Screen 2 • Dolby Atmos 4K",
         "price": 250.0,
-        "poster_url": "https://images.unsplash.com/photo-1568876694728-451bbf694b83?w=600&auto=format&fit=crop&q=80",
-        "trailer_url": "https://www.youtube.com/embed/TcMBFSGVi1c",
+        "poster_url": "https://m.media-amazon.com/images/M/MV5BMTc5MDE2ODcwNV5BMl5BanBnXkFtZTgwMzI2NzQ2NzM@._V1_FMjpg_UX1000_.jpg",
+        "trailer_url": "https://www.youtube.com/watch?v=L2NAh3CIdig",
         "times": ["11:30 AM", "03:00 PM", "06:30 PM", "10:00 PM"]
     }
 ]
@@ -86,76 +86,56 @@ def get_all_shows():
                 "movie": movie["title"],
                 "screen": movie["screen"],
                 "price": movie["price"],
+                "poster_url": movie["poster_url"],
                 "time": t
             })
             idx += 1
     return shows
 
-def get_show_key(movie_title, time):
-    return f"{movie_title}|{time}"
-
-def initialize_seats():
+def get_booked_seats(movie_title, time):
+    """Fetches already-booked seat strings for a specific show from the bookings table."""
     try:
-        # Check per showtime so newly added movies get seats created automatically
-        for movie in MOVIES:
-            for t in movie["times"]:
-                show_key = get_show_key(movie["title"], t)
-                check = supabase.table("seats").select("id").eq("show_key", show_key).limit(1).execute()
-                if not check.data:
-                    print(f"Creating seats for: {show_key}")
-                    seats_to_insert = []
-                    for r in range(ROWS):
-                        for c in range(COLS):
-                            seats_to_insert.append({
-                                "show_key": show_key,
-                                "row": r,
-                                "col": c,
-                                "is_booked": False
-                            })
-                    for i in range(0, len(seats_to_insert), 400):
-                        batch = seats_to_insert[i:i+400]
-                        supabase.table("seats").insert(batch).execute()
-        print("Seat verification complete.")
+        res = supabase.table("bookings").select("seats").eq("movie", movie_title).eq("show_time", time).execute()
+        booked = set()
+        if res.data:
+            for item in res.data:
+                raw_seats = item.get("seats", "")
+                if raw_seats:
+                    for s in raw_seats.split(","):
+                        booked.add(s.strip())
+        return booked
     except Exception as e:
-        print("Init error:", str(e))
-
-def get_available_count(movie_title, time):
-    show_key = get_show_key(movie_title, time)
-    result = supabase.table("seats")\
-        .select("id", count="exact")\
-        .eq("show_key", show_key)\
-        .eq("is_booked", False)\
-        .execute()
-    return result.count or 0
-
-def get_seats_for_show(movie_title, time):
-    show_key = get_show_key(movie_title, time)
-    result = supabase.table("seats")\
-        .select("row, col, is_booked")\
-        .eq("show_key", show_key)\
-        .execute()
-    
-    seats = [[False for _ in range(COLS)] for _ in range(ROWS)]
-    for item in result.data:
-        seats[item["row"]][item["col"]] = item["is_booked"]
-    return seats
-
-# ================= ROUTES =================
+        print("Error fetching booked seats:", e)
+        return set()
 
 @app.route("/")
 def index():
     all_shows = get_all_shows()
-    grouped_movies = []
     
+    # 1 fast query to count confirmed tickets per show instead of 20 heavy queries
+    try:
+        res = supabase.table("bookings").select("movie, show_time, seats").execute()
+        booked_counts = {}
+        for b in (res.data or []):
+            key = f"{b.get('movie')}|{b.get('show_time')}"
+            seats_in_booking = len(b.get("seats", "").split(",")) if b.get("seats") else 0
+            booked_counts[key] = booked_counts.get(key, 0) + seats_in_booking
+    except Exception as e:
+        print("Booking count query failed:", e)
+        booked_counts = {}
+
+    grouped_movies = []
     for movie in MOVIES:
         movie_shows = []
         for s in all_shows:
             if s["movie_id"] == movie["id"]:
-                avail = get_available_count(s["movie"], s["time"])
+                key = f"{s['movie']}|{s['time']}"
+                taken = booked_counts.get(key, 0)
+                available = max(0, TOTAL_SEATS_PER_SHOW - taken)
                 movie_shows.append({
                     "show_id": s["show_id"],
                     "time": s["time"],
-                    "available": avail
+                    "available": available
                 })
         
         grouped_movies.append({
@@ -178,13 +158,24 @@ def seats(show_id):
         return redirect(url_for("index"))
 
     show_info = all_shows[show_id]
-    seats_data = get_seats_for_show(show_info["movie"], show_info["time"])
+    booked_set = get_booked_seats(show_info["movie"], show_info["time"])
+
+    # Build 10x15 matrix with fast set lookups
+    row_chars = "ABCDEFGHIJ"
+    seats_data = []
+    for r in range(ROWS):
+        row_list = []
+        for c in range(COLS):
+            seat_code = f"{row_chars[r]}{c+1}"
+            row_list.append(seat_code in booked_set)
+        seats_data.append(row_list)
 
     show = {
         "movie": show_info["movie"],
         "screen": show_info["screen"],
         "time": show_info["time"],
         "price": show_info["price"],
+        "poster_url": show_info["poster_url"],
         "seats": seats_data
     }
     return render_template("seats.html", show=show, show_id=show_id, rows=ROWS, cols=COLS)
@@ -203,10 +194,9 @@ def book():
         return redirect(url_for("index"))
 
     show_info = all_shows[show_id]
-    current_seats = get_seats_for_show(show_info["movie"], show_info["time"])
 
     if not name or not email or not selected_seats:
-        flash("Please enter name, email, and select your seats.")
+        flash("Please enter name, email, and choose your seats.")
         return redirect(url_for("seats", show_id=show_id))
 
     try:
@@ -217,37 +207,25 @@ def book():
         flash("Invalid age provided.")
         return redirect(url_for("seats", show_id=show_id))
 
-    sel_rows = []
-    sel_cols = []
+    # Double booking protection check
+    already_booked = get_booked_seats(show_info["movie"], show_info["time"])
     for seat in selected_seats:
-        row_char = seat[0]
-        col = int(seat[1:]) - 1
-        row = ord(row_char) - 65
-
-        if current_seats[row][col]:
-            flash(f"Seat {seat} is already booked!")
+        if seat in already_booked:
+            flash(f"Seat {seat} was just booked by another customer! Please pick another.")
             return redirect(url_for("seats", show_id=show_id))
 
-        sel_rows.append(row)
-        sel_cols.append(col)
-
-    show_key = get_show_key(show_info["movie"], show_info["time"])
-    for r, c in zip(sel_rows, sel_cols):
-        supabase.table("seats").update({"is_booked": True})\
-            .eq("show_key", show_key).eq("row", r).eq("col", c).execute()
-
-    ticket_total = len(sel_rows) * show_info["price"]
+    ticket_total = len(selected_seats) * show_info["price"]
 
     session["booking"] = {
         "name": name,
         "email": email,
         "age": age,
-        "rows": sel_rows,
-        "cols": sel_cols,
+        "seats": selected_seats,
         "ticket_total": ticket_total,
         "movie": show_info["movie"],
         "screen": show_info["screen"],
-        "show_time": show_info["time"]
+        "show_time": show_info["time"],
+        "poster_url": show_info["poster_url"]
     }
 
     return redirect(url_for("food"))
@@ -258,12 +236,12 @@ def food():
         return redirect(url_for("index"))
 
     menu = {
-        1: ("Popcorn (Small)", 150),
-        2: ("Popcorn (Large)", 250),
-        3: ("Soft Drink", 120),
-        4: ("Nachos with Cheese", 200),
-        5: ("Combo (Popcorn + Drink)", 320),
-        6: ("Bottled Water", 50)
+        1: ("Popcorn (Regular)", 150),
+        2: ("Popcorn (Large Tub)", 250),
+        3: ("Soft Drink (500ml)", 120),
+        4: ("Nachos with Warm Cheese", 200),
+        5: ("Combo (Large Popcorn + 2 Drinks)", 350),
+        6: ("Bottled Mineral Water", 50)
     }
 
     if request.method == "POST":
@@ -285,9 +263,10 @@ def food():
             next_num = 1000 + result.data[0]["id"] + 1
 
         ticket_id = f"TJP{next_num}"
-        seats_str = ", ".join([f"{chr(65 + r)}{c + 1}" for r, c in zip(data["rows"], data["cols"])])
+        seats_str = ", ".join(data["seats"])
         total_price = data["ticket_total"] + food_total
 
+        # Save to database
         supabase.table("bookings").insert({
             "ticket_id": ticket_id,
             "name": data["name"],
@@ -301,26 +280,38 @@ def food():
             "foods": json.dumps(foods)
         }).execute()
 
+        # Send Brevo email with the poster image embedded
         try:
             email_html = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; background:#121218; color:#fff; padding:24px; border-radius:12px;">
-                <h2 style="color: #ffcc00;">TJP Cinema - Booking Confirmation</h2>
-                <p>Hello <strong>{data['name']}</strong>,</p>
-                <p>Your tickets have been confirmed!</p>
+            <div style="font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; max-width: 600px; margin: auto; background:#11121d; color:#ffffff; border-radius:16px; overflow:hidden; border: 1px solid #333;">
                 
-                <table style="width: 100%; border-collapse: collapse; margin: 20px 0; color:#ddd;">
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #333;">Ticket ID</td><td style="padding: 8px; border-bottom: 1px solid #333; color:#ffcc00; font-weight:bold;">{ticket_id}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #333;">Movie</td><td style="padding: 8px; border-bottom: 1px solid #333;">{data['movie']}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #333;">Screen</td><td style="padding: 8px; border-bottom: 1px solid #333;">{data.get('screen', 'Screen 1')}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #333;">Show Time</td><td style="padding: 8px; border-bottom: 1px solid #333;">{data['show_time']}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #333;">Seats</td><td style="padding: 8px; border-bottom: 1px solid #333; color:#2ecc71; font-weight:bold;">{seats_str}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #333;">Total Paid</td><td style="padding: 8px; border-bottom: 1px solid #333; font-weight:bold; color:#ffcc00;">Rs. {total_price}</td></tr>
-                </table>
+                <!-- Email Banner with Poster Thumbnail -->
+                <div style="background: linear-gradient(135deg, #1f1b3c, #0a081a); padding: 24px; text-align: center; border-bottom: 2px solid #ffcc00;">
+                    <img src="{data.get('poster_url', '')}" alt="{data['movie']}" 
+                         style="width: 140px; height: 190px; object-fit: cover; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); margin-bottom: 14px; border: 2px solid #ffcc00;">
+                    <h1 style="color: #ffcc00; margin: 0; font-size: 24px; letter-spacing: 1px;">{data['movie']}</h1>
+                    <p style="color: #a0a0b2; margin: 6px 0 0; font-size: 14px;">{data.get('screen', 'Screen 1')} &bull; {data['show_time']}</p>
+                </div>
 
-                <div style="text-align: center; margin: 25px 0;">
-                    <p style="margin-bottom:8px;">Scan this QR pass at the cinema entrance:</p>
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={ticket_id}" 
-                         alt="QR Code" width="200" height="200" style="border: 8px solid #fff; border-radius: 8px;">
+                <div style="padding: 24px;">
+                    <p style="font-size: 16px; margin-top: 0;">Hi <strong>{data['name']}</strong>,</p>
+                    <p style="color: #cccccc; font-size: 14px; line-height: 1.5;">Your seats are confirmed! Present this ticket or scan the QR pass below at the gate scanner.</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; color: #ddd;">
+                        <tr><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; color:#888;">Ticket Pass ID</td><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; text-align:right; color:#ffcc00; font-weight:bold; font-size:16px;">{ticket_id}</td></tr>
+                        <tr><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; color:#888;">Allocated Seats</td><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; text-align:right; color:#2ecc71; font-weight:bold;">{seats_str}</td></tr>
+                        <tr><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; color:#888;">Ticket Total</td><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; text-align:right;">Rs. {data['ticket_total']}</td></tr>
+                        <tr><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; color:#888;">Food & Snacks</td><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; text-align:right;">Rs. {food_total}</td></tr>
+                        <tr><td style="padding: 12px 0 0; font-size:16px; font-weight:bold; color:#fff;">Total Paid</td><td style="padding: 12px 0 0; text-align:right; font-size:18px; font-weight:bold; color:#ffcc00;">Rs. {total_price}</td></tr>
+                    </table>
+
+                    <div style="text-align: center; margin: 25px 0; padding: 20px; background: rgba(255,255,255,0.04); border-radius: 12px;">
+                        <p style="margin: 0 0 12px; font-size: 13px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Entrance Turnstile QR Pass</p>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={ticket_id}" 
+                             alt="QR Code" width="180" height="180" style="border: 8px solid #ffffff; border-radius: 12px; background: #ffffff;">
+                    </div>
+
+                    <p style="text-align:center; color:#777; font-size:12px; margin-bottom:0;">TJP Cinema &bull; Premium Cinematic Experience</p>
                 </div>
             </div>
             """
@@ -328,7 +319,7 @@ def food():
             payload = {
                 "sender": {"name": "TJP Cinema", "email": BREVO_SENDER_EMAIL},
                 "to": [{"email": data["email"], "name": data["name"]}],
-                "subject": f"Tickets Confirmed: {ticket_id} - {data['movie']}",
+                "subject": f"🎟️ Ticket Confirmed: {ticket_id} - {data['movie']}",
                 "htmlContent": email_html
             }
 
@@ -353,7 +344,16 @@ def confirmation(ticket_id):
     if not result.data:
         flash("Ticket not found")
         return redirect(url_for("index"))
-    return render_template("confirmation.html", b=result.data[0])
+    
+    b = result.data[0]
+    # Grab movie poster
+    poster = ""
+    for m in MOVIES:
+        if m["title"] == b.get("movie"):
+            poster = m["poster_url"]
+            break
+
+    return render_template("confirmation.html", b=b, poster_url=poster)
 
 @app.route("/bookings", methods=["GET", "POST"])
 def view_bookings():
@@ -392,8 +392,7 @@ def admin_reset():
 
         try:
             supabase.table("bookings").delete().neq("id", 0).execute()
-            supabase.table("seats").update({"is_booked": False}).neq("id", 0).execute()
-            flash("All bookings cleared and seats reset successfully!")
+            flash("All bookings have been cleared successfully!")
             return redirect(url_for("index"))
         except Exception as e:
             flash(f"Error resetting: {str(e)}")
@@ -452,8 +451,6 @@ def send_daily_report():
         flash(f"Failed to generate report: {str(e)}")
 
     return redirect(url_for("view_bookings"))
-
-initialize_seats()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
