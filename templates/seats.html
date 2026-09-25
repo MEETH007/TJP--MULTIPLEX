@@ -1,42 +1,49 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
-    <h2>{{ show.movie }}</h2>
-    {% set seat_price = 650 if "IMAX" in show.movie else 250 %}
-    <p>{{ show.time }} | Price: Rs. {{ seat_price }} per seat</p>
-
-    <div class="screen">SCREEN</div>
-
-    <!-- Zoom Controls -->
-    <div style="text-align: center; margin-bottom: 15px;">
-        <button type="button" class="btn" onclick="zoomOut()" style="padding: 6px 14px;">Zoom Out −</button>
-        <button type="button" class="btn" onclick="resetZoom()" style="padding: 6px 14px;">Reset</button>
-        <button type="button" class="btn" onclick="zoomIn()" style="padding: 6px 14px;">Zoom In +</button>
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: var(--primary); font-size: 1.6rem;">{{ show.movie }}</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+            {{ show.screen }} &nbsp;|&nbsp; 🕒 {{ show.time }} &nbsp;|&nbsp; Price: <strong>Rs. {{ show.price }}</strong>
+        </p>
     </div>
 
-    <!-- Live Selection Tracker -->
-    <div style="text-align: center; margin-bottom: 15px;">
-        <span style="color:#ffcc00; font-size: 0.95rem;">
-            Max <strong>12 seats</strong> | Selected: <strong id="selected-count">0</strong> | Total: <strong>Rs. <span id="running-total">0</span></strong>
+    <!-- Screen graphic -->
+    <div style="background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.02) 100%); border-top: 3px solid var(--primary); text-align: center; padding: 8px; margin: 15px auto 25px; border-radius: 6px 6px 30px 30px; letter-spacing: 6px; font-weight: 800; font-size: 0.85rem; color: var(--text-muted); width: 80%;">
+        AUDITORIUM SCREEN
+    </div>
+
+    <!-- Zoom Controls -->
+    <div style="text-align: center; margin-bottom: 12px; display: flex; justify-content: center; gap: 8px;">
+        <button type="button" class="btn btn-outline" onclick="zoomOut()" style="padding: 6px 12px;">Zoom −</button>
+        <button type="button" class="btn btn-outline" onclick="resetZoom()" style="padding: 6px 12px;">Reset</button>
+        <button type="button" class="btn btn-outline" onclick="zoomIn()" style="padding: 6px 12px;">Zoom +</button>
+    </div>
+
+    <!-- Live Bill Counter -->
+    <div style="text-align: center; margin-bottom: 18px;">
+        <span style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); padding: 8px 18px; border-radius: 50px; font-size: 0.9rem;">
+            Seats: <strong id="selected-count" style="color: var(--primary);">0</strong> / 12 &nbsp;|&nbsp; Estimated Total: <strong style="color: var(--primary);">Rs. <span id="running-total">0</span></strong>
         </span>
     </div>
 
-    <form method="POST" action="{{ url_for('book') }}" id="booking-form" onsubmit="return validateSeatSelection()">
+    <form method="POST" action="{{ url_for('book') }}" id="booking-form" onsubmit="return validateSelection()">
         <input type="hidden" name="show_id" value="{{ show_id }}">
 
-        <div style="overflow-x: auto; text-align: center; padding-bottom: 20px;">
-            <div id="seat-container" style="display: inline-block; transform-origin: top center; transition: transform 0.2s ease;">
+        <!-- Strictly Centered Matrix Canvas -->
+        <div style="width: 100%; overflow-x: auto; text-align: center; padding: 15px 0; border: 1px solid var(--card-border); border-radius: var(--radius-sm);">
+            <div id="seat-wrapper" style="display: inline-block; margin: 0 auto; text-align: center; transform-origin: top center; transition: transform 0.2s ease;">
                 {% for i in range(rows) %}
-                    <div style="margin-bottom: 6px; white-space: nowrap;">
-                        <strong style="display: inline-block; width: 25px; text-align: right; margin-right: 8px;">{{ "ABCDEFGHIJKLMNOP"[i] }}</strong>
+                    <div style="margin-bottom: 4px; white-space: nowrap;">
+                        <strong style="display: inline-block; width: 25px; text-align: right; margin-right: 8px; color: var(--text-muted); font-size: 0.8rem;">{{ "ABCDEFGHIJKLMNOP"[i] }}</strong>
                         {% for j in range(cols) %}
                             {% set seat_id = "ABCDEFGHIJKLMNOP"[i] ~ (j+1)|string %}
                             {% if show.seats[i][j] %}
-                                <span class="seat booked">X</span>
+                                <span class="seat booked" style="display: inline-flex; align-items:center; justify-content:center; width:28px; height:28px; margin:2px; border-radius:5px; background:#444; color:#777; font-size:10px; cursor:not-allowed;" title="Booked">✕</span>
                             {% else %}
                                 <label style="cursor: pointer;">
                                     <input type="checkbox" name="seats" value="{{ seat_id }}" style="display:none;" class="seat-checkbox">
-                                    <span class="seat available">{{ j+1 }}</span>
+                                    <span class="seat available" style="display: inline-flex; align-items:center; justify-content:center; width:28px; height:28px; margin:2px; border-radius:5px; background:var(--success); color:#fff; font-size:10px; font-weight:bold; transition: 0.15s;" title="Seat {{ seat_id }}">{{ j+1 }}</span>
                                 </label>
                             {% endif %}
                         {% endfor %}
@@ -45,88 +52,92 @@
             </div>
         </div>
 
-        <br>
-        <div style="text-align: center;">
-            <label>Your Name:<br>
-                <input type="text" name="name" required style="padding:10px; width:90%; max-width:300px; margin-top:5px;">
-            </label><br><br>
+        <div style="max-width: 420px; margin: 30px auto 0;">
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Full Name</label>
+                <input type="text" name="name" required placeholder="Guest Name" style="width: 100%;">
+            </div>
 
-            <label>Email:<br>
-                <input type="email" name="email" required placeholder="your@email.com"
-                       style="padding:10px; width:90%; max-width:300px; margin-top:5px;">
-            </label><br><br>
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Email Address</label>
+                <input type="email" name="email" required placeholder="name@example.com" style="width: 100%;">
+            </div>
 
-            <label>Age:<br>
-                <input type="number" name="age" min="1" max="120" required style="padding:10px; width:100px; margin-top:5px;">
-            </label><br><br>
+            <div style="margin-bottom: 22px;">
+                <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Age</label>
+                <input type="number" name="age" min="1" max="120" required placeholder="18" style="width: 100%;">
+            </div>
 
-            <button type="submit" class="btn">Continue to Food →</button>
+            <button type="submit" class="btn" style="width: 100%;">Proceed to Concessions & Food →</button>
         </div>
     </form>
 </div>
 
 <script>
-    let currentScale = window.innerWidth < 600 ? 0.75 : 1.0;
+    let currentScale = window.innerWidth < 768 ? 0.70 : 1.0;
     const maxSeats = 12;
-    const seatPrice = {{ seat_price }};
-    const seatContainer = document.getElementById('seat-container');
+    const seatPrice = {{ show.price }};
+    const seatWrapper = document.getElementById('seat-wrapper');
 
-    function applyTransform() {
-        seatContainer.style.transform = `scale(${currentScale})`;
+    function applyScale() {
+        seatWrapper.style.transform = `scale(${currentScale})`;
     }
 
     function zoomIn() {
-        if (currentScale < 1.4) {
+        if (currentScale < 1.35) {
             currentScale += 0.15;
-            applyTransform();
+            applyScale();
         }
     }
 
     function zoomOut() {
-        if (currentScale > 0.5) {
+        if (currentScale > 0.50) {
             currentScale -= 0.15;
-            applyTransform();
+            applyScale();
         }
     }
 
     function resetZoom() {
-        currentScale = window.innerWidth < 600 ? 0.75 : 1.0;
-        applyTransform();
+        currentScale = window.innerWidth < 768 ? 0.70 : 1.0;
+        applyScale();
     }
 
-    // Apply mobile scale on initial load
-    applyTransform();
+    applyScale();
 
-    // Live seat tracking & limit validation
     const checkboxes = document.querySelectorAll('.seat-checkbox');
-    const selectedCountElem = document.getElementById('selected-count');
-    const runningTotalElem = document.getElementById('running-total');
+    const selectedCount = document.getElementById('selected-count');
+    const runningTotal = document.getElementById('running-total');
 
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function () {
-            const checkedSeats = document.querySelectorAll('.seat-checkbox:checked');
-            
-            if (checkedSeats.length > maxSeats) {
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const checkedCount = document.querySelectorAll('.seat-checkbox:checked').length;
+            if (checkedCount > maxSeats) {
                 this.checked = false;
-                alert("You can select a maximum of " + maxSeats + " seats only.");
+                alert("Maximum limit is " + maxSeats + " seats per ticket reservation.");
                 return;
             }
+            
+            const badge = this.nextElementSibling;
+            if (this.checked) {
+                badge.style.background = 'var(--primary)';
+                badge.style.color = '#000';
+                badge.style.boxShadow = '0 0 10px var(--primary)';
+            } else {
+                badge.style.background = 'var(--success)';
+                badge.style.color = '#fff';
+                badge.style.boxShadow = 'none';
+            }
 
-            // Toggle visual class
-            this.nextElementSibling.classList.toggle('selected', this.checked);
-
-            // Update running calculations
-            const totalCount = document.querySelectorAll('.seat-checkbox:checked').length;
-            selectedCountElem.textContent = totalCount;
-            runningTotalElem.textContent = (totalCount * seatPrice).toLocaleString('en-IN');
+            const activeSeats = document.querySelectorAll('.seat-checkbox:checked').length;
+            selectedCount.textContent = activeSeats;
+            runningTotal.textContent = (activeSeats * seatPrice).toLocaleString('en-IN');
         });
     });
 
-    // Guard against submitting without selecting any seat
-    function validateSeatSelection() {
-        const checkedCount = document.querySelectorAll('.seat-checkbox:checked').length;
-        if (checkedCount === 0) {
-            alert("Please select at least one seat before continuing.");
+    function validateSelection() {
+        const count = document.querySelectorAll('.seat-checkbox:checked').length;
+        if (count === 0) {
+            alert("Please pick at least one seat to proceed.");
             return false;
         }
         return true;
