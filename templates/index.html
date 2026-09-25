@@ -1,18 +1,73 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+    /* Clean, high-contrast BookMyShow style showtime buttons */
+    .time-chip {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none !important;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 204, 0, 0.4);
+        border-radius: 10px;
+        padding: 10px 6px;
+        transition: all 0.2s ease-in-out;
+    }
+    /* Enforce pure white text so visited links never turn purple */
+    .time-chip .time-text,
+    .time-chip:visited .time-text {
+        color: #ffffff !important;
+        font-weight: 700;
+        font-size: 0.95rem;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+    }
+    .time-chip .seats-avail {
+        color: #00ff88 !important;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .time-chip:hover {
+        background: #ffcc00 !important;
+        border-color: #ffcc00 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(255, 204, 0, 0.35);
+    }
+    .time-chip:hover .time-text {
+        color: #000000 !important;
+    }
+    .time-chip:hover .seats-avail {
+        color: #004d26 !important;
+    }
+
+    .time-chip-soldout {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 10px 6px;
+        background: rgba(0, 0, 0, 0.3);
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+</style>
+
 <div class="card">
     <h2 style="text-align:center; color: var(--primary); margin-bottom: 25px;">Now Showing in Theatres</h2>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
         {% for movie in movies %}
-        <div style="background: rgba(0,0,0,0.25); border-radius: var(--radius-lg); border: 1px solid var(--card-border); overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: rgba(0,0,0,0.3); border-radius: var(--radius-lg); border: 1px solid var(--card-border); overflow: hidden; display: flex; flex-direction: column;">
             
             <!-- Movie Poster + Screen Badge -->
             <div style="position: relative; height: 320px; overflow: hidden; background: #000;">
                 <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" 
                      style="width: 100%; height: 100%; object-fit: cover; display: block;"
                      loading="lazy"
-                     onerror="this.onerror=null; this.src='https://placehold.co/600x800/1a1638/ffcc00?text=Poster+Unavailable';">
+                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=600&auto=format&fit=crop&q=80';">
                 <span style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.85); color: var(--primary); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(4px); border: 1px solid rgba(255,204,0,0.3);">
                     {{ movie.screen }}
                 </span>
@@ -30,22 +85,19 @@
                         🎬 Watch Trailer
                     </button>
 
-                    <!-- Showtime Selection Chips -->
+                    <!-- Showtime Selection Grid -->
                     <p style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">SELECT SHOWTIME:</p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         {% for s in movie.shows %}
                             {% if s.available > 0 %}
-                                <a href="{{ url_for('seats', show_id=s.show_id) }}" 
-                                   style="text-decoration: none; border: 1px solid var(--primary); border-radius: 8px; padding: 8px 6px; text-align: center; background: rgba(255,204,0,0.06); transition: 0.2s;"
-                                   onmouseover="this.style.background='var(--primary)'; this.style.color='#000';"
-                                   onmouseout="this.style.background='rgba(255,204,0,0.06)'; this.style.color='var(--text-main)';">
-                                    <div style="font-weight: 700; font-size: 0.85rem;">{{ s.time }}</div>
-                                    <div style="font-size: 0.7rem; color: var(--success); font-weight: 600;">{{ s.available }} left</div>
+                                <a href="{{ url_for('seats', show_id=s.show_id) }}" class="time-chip">
+                                    <span class="time-text">{{ s.time }}</span>
+                                    <span class="seats-avail">{{ s.available }} left</span>
                                 </a>
                             {% else %}
-                                <div style="border: 1px solid #444; border-radius: 8px; padding: 8px 6px; text-align: center; background: rgba(0,0,0,0.2); opacity: 0.5;">
-                                    <div style="font-weight: 700; font-size: 0.85rem; color: #888;">{{ s.time }}</div>
-                                    <div style="font-size: 0.7rem; color: var(--danger); font-weight: 600;">Sold Out</div>
+                                <div class="time-chip-soldout">
+                                    <span style="font-weight: 700; font-size: 0.95rem; color: #888;">{{ s.time }}</span>
+                                    <span style="font-size: 0.75rem; color: var(--danger); font-weight: 600;">Sold Out</span>
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -85,7 +137,6 @@
         document.getElementById('trailerTitle').textContent = title + " — Official Trailer";
         document.getElementById('trailerFrame').src = url + "?autoplay=1&enablejsapi=1";
         
-        // Build direct fallback URL for YouTube app or new browser tab
         const ytWatchUrl = url.replace('embed/', 'watch?v=').replace('-nocookie', '');
         document.getElementById('externalTrailerLink').href = ytWatchUrl;
 
@@ -99,7 +150,6 @@
         modal.style.display = 'none';
     }
 
-    // Dismiss modal if clicking anywhere outside the video dialog
     document.getElementById('trailerModal').addEventListener('click', function(e) {
         if (e.target === this) {
             closeTrailer();
