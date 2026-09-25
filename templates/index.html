@@ -8,10 +8,12 @@
         <div style="background: rgba(0,0,0,0.25); border-radius: var(--radius-lg); border: 1px solid var(--card-border); overflow: hidden; display: flex; flex-direction: column;">
             
             <!-- Movie Poster + Screen Badge -->
-            <div style="position: relative; height: 260px; overflow: hidden;">
+            <div style="position: relative; height: 320px; overflow: hidden; background: #000;">
                 <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" 
-                     style="width: 100%; height: 100%; object-fit: cover;">
-                <span style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.8); color: var(--primary); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(4px);">
+                     style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                     loading="lazy"
+                     onerror="this.onerror=null; this.src='https://placehold.co/600x800/1a1638/ffcc00?text=Poster+Unavailable';">
+                <span style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.85); color: var(--primary); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(4px); border: 1px solid rgba(255,204,0,0.3);">
                     {{ movie.screen }}
                 </span>
             </div>
@@ -19,17 +21,17 @@
             <!-- Details -->
             <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-                    <h3 style="color: var(--primary); font-size: 1.2rem; margin-bottom: 6px;">{{ movie.title }}</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 14px;">Tickets from <strong>Rs. {{ movie.price }}</strong></p>
+                    <h3 style="color: var(--primary); font-size: 1.15rem; margin-bottom: 6px;">{{ movie.title }}</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">Tickets from <strong>Rs. {{ movie.price }}</strong></p>
 
-                    <!-- Watch Trailer Trigger Button -->
+                    <!-- Watch Trailer Button -->
                     <button type="button" class="btn btn-outline" onclick="openTrailer('{{ movie.trailer_url }}', '{{ movie.title }}')" 
                             style="width: 100%; margin-bottom: 16px; padding: 8px; font-size: 0.85rem;">
                         🎬 Watch Trailer
                     </button>
 
                     <!-- Showtime Selection Chips -->
-                    <p style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">SELECT SHOWTIME:</p>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">SELECT SHOWTIME:</p>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                         {% for s in movie.shows %}
                             {% if s.available > 0 %}
@@ -37,13 +39,13 @@
                                    style="text-decoration: none; border: 1px solid var(--primary); border-radius: 8px; padding: 8px 6px; text-align: center; background: rgba(255,204,0,0.06); transition: 0.2s;"
                                    onmouseover="this.style.background='var(--primary)'; this.style.color='#000';"
                                    onmouseout="this.style.background='rgba(255,204,0,0.06)'; this.style.color='var(--text-main)';">
-                                    <div style="font-weight: 700; font-size: 0.9rem;">{{ s.time }}</div>
-                                    <div style="font-size: 0.7rem; color: var(--success);">{{ s.available }} left</div>
+                                    <div style="font-weight: 700; font-size: 0.85rem;">{{ s.time }}</div>
+                                    <div style="font-size: 0.7rem; color: var(--success); font-weight: 600;">{{ s.available }} left</div>
                                 </a>
                             {% else %}
                                 <div style="border: 1px solid #444; border-radius: 8px; padding: 8px 6px; text-align: center; background: rgba(0,0,0,0.2); opacity: 0.5;">
-                                    <div style="font-weight: 700; font-size: 0.9rem; color: #888;">{{ s.time }}</div>
-                                    <div style="font-size: 0.7rem; color: var(--danger);">Sold Out</div>
+                                    <div style="font-weight: 700; font-size: 0.85rem; color: #888;">{{ s.time }}</div>
+                                    <div style="font-size: 0.7rem; color: var(--danger); font-weight: 600;">Sold Out</div>
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -56,14 +58,24 @@
 </div>
 
 <!-- Modal Popup for YouTube Trailer -->
-<div id="trailerModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); align-items: center; justify-content: center; padding: 20px;">
-    <div style="background: #181824; width: 100%; max-width: 720px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; position: relative;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-bottom: 1px solid #333;">
-            <h4 id="trailerTitle" style="color: var(--primary); margin: 0;">Movie Trailer</h4>
-            <button onclick="closeTrailer()" style="background: transparent; border: none; color: #fff; font-size: 20px; cursor: pointer;">✕</button>
+<div id="trailerModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.88); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: #12131c; width: 100%; max-width: 760px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.15); overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.7);">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <h4 id="trailerTitle" style="color: var(--primary); margin: 0; font-size: 1rem;">Movie Trailer</h4>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <a id="externalTrailerLink" href="#" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); font-size: 0.8rem; text-decoration: underline;">Open in YouTube ↗</a>
+                <button type="button" onclick="closeTrailer()" style="background: transparent; border: none; color: #fff; font-size: 22px; cursor: pointer; line-height: 1;">✕</button>
+            </div>
         </div>
+
         <div style="position: relative; padding-bottom: 56.25%; height: 0;">
-            <iframe id="trailerFrame" src="" style="position: absolute; top:0; left: 0; width: 100%; height: 100%; border: none;" allowfullscreen></iframe>
+            <iframe id="trailerFrame" 
+                    src="" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowfullscreen>
+            </iframe>
         </div>
     </div>
 </div>
@@ -71,7 +83,12 @@
 <script>
     function openTrailer(url, title) {
         document.getElementById('trailerTitle').textContent = title + " — Official Trailer";
-        document.getElementById('trailerFrame').src = url + "?autoplay=1";
+        document.getElementById('trailerFrame').src = url + "?autoplay=1&enablejsapi=1";
+        
+        // Build direct fallback URL for YouTube app or new browser tab
+        const ytWatchUrl = url.replace('embed/', 'watch?v=').replace('-nocookie', '');
+        document.getElementById('externalTrailerLink').href = ytWatchUrl;
+
         const modal = document.getElementById('trailerModal');
         modal.style.display = 'flex';
     }
@@ -81,5 +98,12 @@
         document.getElementById('trailerFrame').src = "";
         modal.style.display = 'none';
     }
+
+    // Dismiss modal if clicking anywhere outside the video dialog
+    document.getElementById('trailerModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeTrailer();
+        }
+    });
 </script>
 {% endblock %}
