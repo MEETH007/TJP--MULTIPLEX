@@ -42,7 +42,7 @@ MOVIES = [
         "title": "Avengers Doomsday (Pre booking)",
         "screen": "Screen 2 • Dolby Atmos 4K",
         "price": 350.0,
-        "poster_url": "https://images.unsplash.com/photo-1635805737707-575885ab0820?w=600&auto=format&fit=crop&q=80",
+        "poster_url": "https://images.weserv.nl/?url=www.impawards.com/2026/posters/avengers_doomsday_ver4.jpg",
         "trailer_url": "https://www.youtube-nocookie.com/embed/irVNGjRFZGk",
         "times": ["10:30 AM", "02:00 PM", "05:30 PM", "09:00 PM"]
     },
