@@ -33,8 +33,8 @@ MOVIES = [
         "title": "Odyssey (IMAX)",
         "screen": "Screen 1 • IMAX with Laser",
         "price": 650.0,
-        "poster_url": "https://m.media-amazon.com/images/M/MV5BMjExMjkwNTQ0Nl5BMl5BanBnXkFtZTcwNTk4NTMDQ@._V1_FMjpg_UX1000_.jpg",
-        "trailer_url": "https://www.youtube.com/watch?v=f_bKjZeJBBI",
+        "poster_url": "https://upload.wikimedia.org/wikipedia/en/1/17/2001_A_Space_Odyssey_%281968%29_poster.jpg",
+        "trailer_url": "https://www.youtube-nocookie.com/embed/f_bKjZeJBBI",
         "times": ["10:00 AM", "01:30 PM", "04:00 PM", "07:30 PM"]
     },
     {
@@ -42,8 +42,8 @@ MOVIES = [
         "title": "Avengers Doomsday (Pre booking)",
         "screen": "Screen 2 • Dolby Atmos 4K",
         "price": 350.0,
-        "poster_url": "https://m.media-amazon.com/images/M/MV5BYzA2Nzk5MTAtNGY1YS00OTFiLWIzZTAtODVlNWVkODBhZGEyXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
-        "trailer_url": "https://www.youtube.com/watch?v=irVNGjRFZGk&t=13s",
+        "poster_url": "https://upload.wikimedia.org/wikipedia/en/0/0d/Avengers_Endgame_poster.jpg",
+        "trailer_url": "https://www.youtube-nocookie.com/embed/irVNGjRFZGk",
         "times": ["10:30 AM", "02:00 PM", "05:30 PM", "09:00 PM"]
     },
     {
@@ -51,8 +51,8 @@ MOVIES = [
         "title": "Spider-Man: BRAND NEW DAY",
         "screen": "Screen 3 • Prime 3D",
         "price": 300.0,
-        "poster_url": "https://m.media-amazon.com/images/M/MV5BNTk4ODkxMTMtZTM3Ni00MWM1LTlmOGQtZjc3YjFlYzA1MGQ3XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
-        "trailer_url": "https://www.youtube.com/watch?v=62bIsvRcPv0",
+        "poster_url": "https://upload.wikimedia.org/wikipedia/en/0/00/Spider-Man_No_Way_Home_poster.jpg",
+        "trailer_url": "https://www.youtube-nocookie.com/embed/62bIsvRcPv0",
         "times": ["11:00 AM", "02:30 PM", "06:00 PM", "09:30 PM"]
     },
     {
@@ -60,8 +60,8 @@ MOVIES = [
         "title": "Dune: Part THREE (IMAX)",
         "screen": "Screen 1 • IMAX with Laser",
         "price": 650.0,
-        "poster_url": "https://m.media-amazon.com/images/M/MV5BN2QyZGUgkNmEtOWY4My00ODlkLWFhMzMtZjU5NmU1MmExYjg1XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
-        "trailer_url": "https://www.youtube.com/watch?v=NdvqHc56lE0",
+        "poster_url": "https://upload.wikimedia.org/wikipedia/en/5/52/Dune_Part_Two_poster.jpeg",
+        "trailer_url": "https://www.youtube-nocookie.com/embed/NdvqHc56lE0",
         "times": ["10:15 AM", "01:45 PM", "05:15 PM", "08:45 PM"]
     },
     {
@@ -69,8 +69,8 @@ MOVIES = [
         "title": "Avengers : Endgame Encore",
         "screen": "Screen 2 • Dolby Atmos 4K",
         "price": 250.0,
-        "poster_url": "https://m.media-amazon.com/images/M/MV5BMTc5MDE2ODcwNV5BMl5BanBnXkFtZTgwMzI2NzQ2NzM@._V1_FMjpg_UX1000_.jpg",
-        "trailer_url": "https://www.youtube.com/watch?v=L2NAh3CIdig",
+        "poster_url": "https://upload.wikimedia.org/wikipedia/en/0/0d/Avengers_Endgame_poster.jpg",
+        "trailer_url": "https://www.youtube-nocookie.com/embed/L2NAh3CIdig",
         "times": ["11:30 AM", "03:00 PM", "06:30 PM", "10:00 PM"]
     }
 ]
@@ -112,7 +112,7 @@ def get_booked_seats(movie_title, time):
 def index():
     all_shows = get_all_shows()
     
-    # 1 fast query to count confirmed tickets per show instead of 20 heavy queries
+    # Fast query to count confirmed tickets per show
     try:
         res = supabase.table("bookings").select("movie, show_time, seats").execute()
         booked_counts = {}
@@ -346,7 +346,6 @@ def confirmation(ticket_id):
         return redirect(url_for("index"))
     
     b = result.data[0]
-    # Grab movie poster
     poster = ""
     for m in MOVIES:
         if m["title"] == b.get("movie"):
