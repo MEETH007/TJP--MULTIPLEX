@@ -160,8 +160,8 @@ def seats(show_id):
     show_info = all_shows[show_id]
     booked_set = get_booked_seats(show_info["movie"], show_info["time"])
 
-    # Build 10x15 matrix with fast set lookups
-    row_chars = "ABCDEFGHIJ"
+    # MUST HAVE ALL 15 ROW LETTERS (A through O)
+    row_chars = "ABCDEFGHIJKLMNO"
     seats_data = []
     for r in range(ROWS):
         row_list = []
