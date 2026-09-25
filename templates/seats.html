@@ -1,154 +1,411 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card">
-    <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="color: var(--primary); font-size: 1.6rem;">{{ show.movie }}</h2>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">
-            {{ show.screen }} &nbsp;|&nbsp; 🕒 {{ show.time }} &nbsp;|&nbsp; Price: <strong>Rs. {{ show.price }}</strong>
+<style>
+    /* PVR Curved Screen Arc */
+    .screen-arc-container {
+        text-align: center;
+        margin: 10px auto 25px auto;
+        max-width: 640px;
+        padding: 0 16px;
+    }
+    .screen-arc-svg {
+        width: 100%;
+        max-height: 40px;
+        overflow: visible;
+    }
+    .screen-label-text {
+        font-size: 11px;
+        letter-spacing: 6px;
+        font-weight: 800;
+        color: var(--primary);
+        text-transform: uppercase;
+        margin-top: 4px;
+    }
+
+    /* Legend using your exact left-image colors */
+    .seat-legend {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 22px;
+        margin-bottom: 20px;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .legend-badge {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+    }
+
+    /* Centered Viewport & Matrix Canvas */
+    .auditorium-viewport {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding: 24px 10px 30px 10px;
+        text-align: center;
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius-sm);
+        background: rgba(0, 0, 0, 0.25);
+    }
+
+    #pvr-stage {
+        display: inline-block;
+        margin: 0 auto;
+        text-align: center;
+        transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        transform-origin: top center;
+    }
+
+    /* Tier Headers */
+    .tier-header {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin: 16px 0 10px 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+    .tier-header::before, .tier-header::after {
+        content: "";
+        height: 1px;
+        background: var(--card-border);
+        width: 70px;
+    }
+
+    /* Rows, Blocks and Aisles */
+    .pvr-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 5px;
+        white-space: nowrap;
+    }
+    .row-letter {
+        width: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-align: center;
+    }
+
+    .seat-block {
+        display: flex;
+        gap: 4px;
+    }
+    .aisle-gap {
+        width: 28px;
+    }
+    .walkway-tier-gap {
+        height: 24px;
+    }
+
+    /* Left Image Seat Styling: Vibrant Green Pills with Rounded Corners */
+    .seat-pill {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+        box-sizing: border-box;
+    }
+
+    /* Available = Neon Green */
+    .seat-pill.available {
+        background: #00e676;
+        color: #000000;
+        cursor: pointer;
+    }
+    .seat-pill.available:hover {
+        transform: scale(1.18);
+        box-shadow: 0 0 10px rgba(0, 230, 118, 0.6);
+        z-index: 2;
+    }
+
+    /* Selected = Cinema Gold */
+    .seat-pill.selected {
+        background: #ffcc00 !important;
+        color: #000000 !important;
+        font-weight: 800;
+        box-shadow: 0 0 12px #ffcc00;
+        transform: scale(1.12);
+    }
+
+    /* Occupied = Muted Gray/Charcoal */
+    .seat-pill.occupied {
+        background: #374151;
+        color: #9ca3af;
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    /* Floating Center Zoom Controls */
+    .zoom-toolbar {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        padding: 6px 16px;
+        border-radius: 50px;
+        border: 1px solid var(--card-border);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        margin: 16px auto 10px auto;
+    }
+</style>
+
+<div class="card" style="padding-left: 8px; padding-right: 8px;">
+    <!-- Show Meta Details -->
+    <div style="text-align: center; margin-bottom: 12px;">
+        <h2 style="color: var(--primary); font-size: 1.55rem; margin-bottom: 3px;">{{ show.movie }}</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">
+            {{ show.screen }} &bull; 🕒 {{ show.time }} &bull; <strong>Rs. {{ show.price }}</strong>
         </p>
     </div>
 
-    <!-- SCREEN BAR (Removed Auditorium) -->
-    <div style="background: linear-gradient(180deg, var(--screen-glow) 0%, rgba(255,255,255,0.01) 100%); border-top: 3px solid var(--primary); text-align: center; padding: 10px; margin: 15px auto 30px; border-radius: 8px 8px 30px 30px; letter-spacing: 8px; font-weight: 800; font-size: 0.85rem; color: var(--text-main); width: 85%;">
-        SCREEN
+    <!-- PVR Curved Screen Arc -->
+    <div class="screen-arc-container">
+        <svg class="screen-arc-svg" viewBox="0 0 500 40" preserveAspectRatio="none">
+            <path d="M 12 35 Q 250 5 488 35" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" style="stroke: var(--primary);" />
+        </svg>
+        <div class="screen-label-text">SCREEN</div>
     </div>
 
-    <!-- Zoom Controls -->
-    <div style="text-align: center; margin-bottom: 14px; display: flex; justify-content: center; gap: 8px;">
-        <button type="button" class="btn btn-outline" onclick="changeZoom(-1)" style="padding: 6px 14px; font-size:0.85rem;">Zoom −</button>
-        <button type="button" class="btn btn-outline" onclick="resetZoom()" style="padding: 6px 14px; font-size:0.85rem;">Reset</button>
-        <button type="button" class="btn btn-outline" onclick="changeZoom(1)" style="padding: 6px 14px; font-size:0.85rem;">Zoom +</button>
+    <!-- Color Legend -->
+    <div class="seat-legend">
+        <div class="legend-item">
+            <div class="legend-badge" style="background: #00e676;"></div>
+            <span>Available</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-badge" style="background: #ffcc00;"></div>
+            <span>Selected</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-badge" style="background: #374151;"></div>
+            <span>Occupied</span>
+        </div>
     </div>
 
-    <!-- Live Bill Counter -->
-    <div style="text-align: center; margin-bottom: 20px;">
-        <span style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 8px 20px; border-radius: 50px; font-size: 0.95rem; display:inline-block;">
-            Seats: <strong id="selected-count" style="color: var(--primary);">0</strong> / 12 &nbsp;|&nbsp; Total: <strong style="color: var(--primary);">Rs. <span id="running-total">0</span></strong>
-        </span>
-    </div>
-
+    <!-- Booking Form -->
     <form method="POST" action="{{ url_for('book') }}" id="booking-form" onsubmit="return validateSelection()">
         <input type="hidden" name="show_id" value="{{ show_id }}">
 
-        <!-- Centered Seat Box -->
-        <div style="width: 100%; overflow-x: auto; text-align: center; padding: 20px 0; border: 1px solid var(--card-border); border-radius: var(--radius-sm);">
-            <div id="seat-stage" data-zoom="2" style="display: inline-block; margin: 0 auto; text-align: center;">
-                {% for i in range(rows) %}
-                    <div class="seat-row" style="margin-bottom: 5px; white-space: nowrap; display:flex; align-items:center; justify-content:center;">
-                        <span class="row-label" style="display: inline-block; width: 20px; text-align: right; margin-right: 8px; color: var(--text-muted); font-weight:bold; font-size: 11px;">
-                            {{ "ABCDEFGHIJ"[i] }}
-                        </span>
-                        {% for j in range(cols) %}
-                            {% set seat_id = "ABCDEFGHIJ"[i] ~ (j+1)|string %}
-                            {% if show.seats[i][j] %}
-                                <span class="seat booked" title="Already Booked">✕</span>
-                            {% else %}
-                                <label style="cursor: pointer; margin: 0 2px;">
-                                    <input type="checkbox" name="seats" value="{{ seat_id }}" style="display:none;" class="seat-checkbox">
-                                    <span class="seat available" title="Seat {{ seat_id }}">{{ j+1 }}</span>
-                                </label>
-                            {% endif %}
+        <div class="auditorium-viewport" id="viewport">
+            <div id="pvr-stage">
+
+                <!-- ================= UPPER TIER: ELITE (Rows O to H) ================= -->
+                <div class="tier-header">ELITE &bull; Rs. {{ show.price }}</div>
+
+                <!-- Row O: Left 1-9, Center 10-20, Right 21-29 -->
+                <div class="pvr-row">
+                    <span class="row-letter">O</span>
+                    <div class="seat-block">{% for c in range(1, 10) %}{{ render_pvr_seat("O", c, show.seats[14][c-1]) }}{% endfor %}</div>
+                    <div class="aisle-gap"></div>
+                    <div class="seat-block">{% for c in range(10, 21) %}{{ render_pvr_seat("O", c, show.seats[14][c-1]) }}{% endfor %}</div>
+                    <div class="aisle-gap"></div>
+                    <div class="seat-block">{% for c in range(21, 30) %}{{ render_pvr_seat("O", c, show.seats[14][c-1]) }}{% endfor %}</div>
+                    <span class="row-letter">O</span>
+                </div>
+
+                <!-- Rows N, M, L, K, J, I, H: Left 1-10, Center 11-21, Right 22-31 -->
+                {% set upper_rows = [('N', 13), ('M', 12), ('L', 11), ('K', 10), ('J', 9), ('I', 8), ('H', 7)] %}
+                {% for r_char, r_idx in upper_rows %}
+                <div class="pvr-row">
+                    <span class="row-letter">{{ r_char }}</span>
+                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="aisle-gap"></div>
+                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="aisle-gap"></div>
+                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <span class="row-letter">{{ r_char }}</span>
+                </div>
+                {% endfor %}
+
+                <!-- WALKWAY AISLE BETWEEN TIERS -->
+                <div class="walkway-tier-gap"></div>
+
+                <!-- ================= LOWER TIER: CLASSIC (Rows G to A) ================= -->
+                <div class="tier-header">CLASSIC &bull; Rs. {{ show.price }}</div>
+
+                <!-- Rows G, F, E: Inset Left 1-6, Center 7-17, Right 18-23 -->
+                {% set middle_rows = [('G', 6), ('F', 5), ('E', 4)] %}
+                {% for r_char, r_idx in middle_rows %}
+                <div class="pvr-row">
+                    <span class="row-letter">{{ r_char }}</span>
+                    <div class="seat-block" style="margin-left: 70px;">
+                        {% for c in range(1, 7) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}
+                    </div>
+                    <div class="aisle-gap"></div>
+                    <div class="seat-block">
+                        {% for c in range(7, 18) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}
+                    </div>
+                    <div class="aisle-gap"></div>
+                    <div class="seat-block" style="margin-right: 70px;">
+                        {% for c in range(18, 24) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}
+                    </div>
+                    <span class="row-letter">{{ r_char }}</span>
+                </div>
+                {% endfor %}
+
+                <!-- Rows D, C, B: Left 1-10, Center 11-21, Right 22-31 -->
+                {% set lower_rows = [('D', 3), ('C', 2), ('B', 1)] %}
+                {% for r_char, r_idx in lower_rows %}
+                <div class="pvr-row">
+                    <span class="row-letter">{{ r_char }}</span>
+                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="aisle-gap"></div>
+                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="aisle-gap"></div>
+                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <span class="row-letter">{{ r_char }}</span>
+                </div>
+                {% endfor %}
+
+                <!-- Row A: Wide Continuous 34-seat span across the front -->
+                <div class="pvr-row">
+                    <span class="row-letter">A</span>
+                    <div class="seat-block">
+                        {% for c in range(1, 35) %}
+                            {{ render_pvr_seat("A", c, show.seats[0][c-1]) }}
                         {% endfor %}
                     </div>
-                {% endfor %}
+                    <span class="row-letter">A</span>
+                </div>
+
             </div>
         </div>
 
-        <div style="max-width: 400px; margin: 30px auto 0;">
-            <div style="margin-bottom: 14px;">
-                <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Full Name</label>
+        <!-- Centered Floating Zoom Toolbar -->
+        <div style="text-align: center;">
+            <div class="zoom-toolbar">
+                <button type="button" class="btn btn-outline" onclick="applyZoom(-0.10)" style="padding: 4px 10px; border-radius: 50px;">−</button>
+                <span id="zoom-percentage" style="font-size: 0.8rem; font-weight: 700; width: 44px; display: inline-block;">100%</span>
+                <button type="button" class="btn btn-outline" onclick="applyZoom(0.10)" style="padding: 4px 10px; border-radius: 50px;">+</button>
+                <button type="button" class="btn btn-outline" onclick="resetToCenter()" style="padding: 4px 12px; font-size: 0.75rem; border-radius: 50px;">Center</button>
+            </div>
+        </div>
+
+        <!-- Checkout Card -->
+        <div style="max-width: 440px; margin: 20px auto 0; padding: 20px; background: rgba(0,0,0,0.3); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Selected Seats</span>
+                    <h4 id="seat-list-summary" style="color: var(--primary); margin-top: 2px;">None</h4>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Estimated Total</span>
+                    <h3 style="color: var(--primary); margin-top: 2px;">Rs. <span id="running-total">0</span></h3>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 12px;">
                 <input type="text" name="name" required placeholder="Guest Name" style="width: 100%;">
             </div>
-
-            <div style="margin-bottom: 14px;">
-                <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Email Address</label>
-                <input type="email" name="email" required placeholder="name@example.com" style="width: 100%;">
+            <div style="margin-bottom: 12px;">
+                <input type="email" name="email" required placeholder="Email Address for Tickets" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 18px;">
+                <input type="number" name="age" min="1" max="120" required placeholder="Age" style="width: 100%;">
             </div>
 
-            <div style="margin-bottom: 22px;">
-                <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Age</label>
-                <input type="number" name="age" min="1" max="120" required placeholder="18" style="width: 100%;">
-            </div>
-
-            <button type="submit" class="btn" style="width: 100%; padding:14px;">Proceed to Food & Snacks →</button>
+            <button type="submit" class="btn" style="width: 100%; padding: 12px; font-size: 1rem;">
+                Proceed to Food & Snacks →
+            </button>
         </div>
     </form>
 </div>
 
-<style>
-    .seat {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        user-select: none;
-        font-weight: 700;
-        transition: all 0.15s ease;
-    }
-    .seat.available {
-        background: var(--success);
-        color: #fff;
-    }
-    .seat.available:hover {
-        transform: translateY(-2px);
-    }
-    .seat.booked {
-        background: #4b5563;
-        color: #9ca3af;
-        cursor: not-allowed;
-        opacity: 0.6;
-    }
-
-    /* Reliable Centered Responsive Sizes */
-    #seat-stage[data-zoom="1"] .seat { width: 22px; height: 22px; font-size: 9px; margin: 1px; }
-    #seat-stage[data-zoom="2"] .seat { width: 30px; height: 30px; font-size: 11px; margin: 2px; }
-    #seat-stage[data-zoom="3"] .seat { width: 38px; height: 38px; font-size: 13px; margin: 3px; }
-</style>
+<!-- Macro for Seat Pills -->
+{% macro render_pvr_seat(row_char, col_num, is_booked) %}
+    {% set seat_code = row_char ~ col_num|string %}
+    {% if is_booked %}
+        <div class="seat-pill occupied" title="Booked">{{ col_num }}</div>
+    {% else %}
+        <label style="margin: 0; line-height: 0;">
+            <input type="checkbox" name="seats" value="{{ seat_code }}" style="display:none;" class="seat-checkbox">
+            <div class="seat-pill available" data-seat="{{ seat_code }}">{{ col_num }}</div>
+        </label>
+    {% endif %}
+{% endmacro %}
 
 <script>
-    const stage = document.getElementById('seat-stage');
-    let zoomLevel = window.innerWidth < 640 ? 1 : 2;
-    stage.setAttribute('data-zoom', zoomLevel);
-
-    function changeZoom(delta) {
-        zoomLevel = Math.max(1, Math.min(3, zoomLevel + delta));
-        stage.setAttribute('data-zoom', zoomLevel);
-    }
-
-    function resetZoom() {
-        zoomLevel = window.innerWidth < 640 ? 1 : 2;
-        stage.setAttribute('data-zoom', zoomLevel);
-    }
-
-    const maxSeats = 12;
+    const stage = document.getElementById('pvr-stage');
+    const viewport = document.getElementById('viewport');
+    const zoomText = document.getElementById('zoom-percentage');
+    const maxSeats = 10;
     const seatPrice = {{ show.price }};
+
+    // Auto-fit to viewport size
+    let scale = window.innerWidth < 768 ? 0.60 : 0.88;
+    updateZoomDisplay();
+
+    function updateZoomDisplay() {
+        stage.style.transform = `scale(${scale})`;
+        zoomText.textContent = Math.round(scale * 100) + "%";
+    }
+
+    function applyZoom(delta) {
+        scale = Math.max(0.40, Math.min(1.3, scale + delta));
+        updateZoomDisplay();
+    }
+
+    function resetToCenter() {
+        scale = window.innerWidth < 768 ? 0.60 : 0.88;
+        updateZoomDisplay();
+        viewport.scrollTo({
+            left: (stage.offsetWidth * scale - viewport.clientWidth) / 2,
+            behavior: 'smooth'
+        });
+    }
+
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            viewport.scrollLeft = (stage.offsetWidth * scale - viewport.clientWidth) / 2;
+        }, 60);
+    });
+
+    // Seat Selection and Active Badge Toggles
     const checkboxes = document.querySelectorAll('.seat-checkbox');
-    const selectedCount = document.getElementById('selected-count');
     const runningTotal = document.getElementById('running-total');
+    const seatSummary = document.getElementById('seat-list-summary');
 
     checkboxes.forEach(cb => {
         cb.addEventListener('change', function() {
-            const checkedCount = document.querySelectorAll('.seat-checkbox:checked').length;
-            if (checkedCount > maxSeats) {
+            const checkedBoxes = Array.from(document.querySelectorAll('.seat-checkbox:checked'));
+            
+            if (checkedBoxes.length > maxSeats) {
                 this.checked = false;
-                alert("Maximum limit is " + maxSeats + " seats per booking.");
+                alert(`You can select a maximum of ${maxSeats} seats.`);
                 return;
             }
-            
-            const badge = this.nextElementSibling;
+
+            const pill = this.nextElementSibling;
             if (this.checked) {
-                badge.style.background = 'var(--primary)';
-                badge.style.color = '#000';
-                badge.style.boxShadow = '0 0 10px var(--primary)';
+                pill.classList.add('selected');
             } else {
-                badge.style.background = 'var(--success)';
-                badge.style.color = '#fff';
-                badge.style.boxShadow = 'none';
+                pill.classList.remove('selected');
             }
 
-            const activeSeats = document.querySelectorAll('.seat-checkbox:checked').length;
-            selectedCount.textContent = activeSeats;
-            runningTotal.textContent = (activeSeats * seatPrice).toLocaleString('en-IN');
+            const currentSelected = Array.from(document.querySelectorAll('.seat-checkbox:checked')).map(c => c.value);
+            runningTotal.textContent = (currentSelected.length * seatPrice).toLocaleString('en-IN');
+            seatSummary.textContent = currentSelected.length > 0 ? currentSelected.join(', ') : 'None';
         });
     });
 
