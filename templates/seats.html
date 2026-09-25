@@ -1,5 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
+
+<!-- Macro defined FIRST so Jinja knows it before rendering the rows -->
+{% macro render_pvr_seat(row_char, col_num, is_booked) %}
+    {% set seat_code = row_char ~ col_num|string %}
+    {% if is_booked %}
+        <div class="seat-pill occupied" title="Booked">{{ col_num }}</div>
+    {% else %}
+        <label style="margin: 0; line-height: 0;">
+            <input type="checkbox" name="seats" value="{{ seat_code }}" style="display:none;" class="seat-checkbox">
+            <div class="seat-pill available" data-seat="{{ seat_code }}">{{ col_num }}</div>
+        </label>
+    {% endif %}
+{% endmacro %}
+
 <style>
     /* PVR Curved Screen Arc */
     .screen-arc-container {
@@ -22,7 +36,7 @@
         margin-top: 4px;
     }
 
-    /* Legend using your exact left-image colors */
+    /* Color Legend */
     .seat-legend {
         display: flex;
         justify-content: center;
@@ -111,7 +125,7 @@
         height: 24px;
     }
 
-    /* Left Image Seat Styling: Vibrant Green Pills with Rounded Corners */
+    /* Seat Styling */
     .seat-pill {
         width: 24px;
         height: 24px;
@@ -155,18 +169,24 @@
         opacity: 0.5;
     }
 
-    /* Floating Center Zoom Controls */
+    /* Sticky Floating Zoom Toolbar */
     .zoom-toolbar {
+        position: sticky;
+        bottom: 16px;
+        z-index: 99;
         display: inline-flex;
         align-items: center;
         gap: 12px;
-        background: var(--card-bg);
+        background: rgba(19, 18, 39, 0.92);
         backdrop-filter: blur(12px);
         padding: 6px 16px;
         border-radius: 50px;
         border: 1px solid var(--card-border);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
         margin: 16px auto 10px auto;
+    }
+    body.light-mode .zoom-toolbar {
+        background: rgba(255, 255, 255, 0.92);
     }
 </style>
 
@@ -213,27 +233,27 @@
                 <!-- ================= UPPER TIER: ELITE (Rows O to H) ================= -->
                 <div class="tier-header">ELITE &bull; Rs. {{ show.price }}</div>
 
-                <!-- Row O: Left 1-9, Center 10-20, Right 21-29 -->
+                <!-- Row O -->
                 <div class="pvr-row">
                     <span class="row-letter">O</span>
-                    <div class="seat-block">{% for c in range(1, 10) %}{{ render_pvr_seat("O", c, show.seats[14][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(1, 10) %}{{ render_pvr_seat("O", c, show.seats[14][c-1] if show.seats|length > 14 and show.seats[14]|length >= c else False) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(10, 21) %}{{ render_pvr_seat("O", c, show.seats[14][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(10, 21) %}{{ render_pvr_seat("O", c, show.seats[14][c-1] if show.seats|length > 14 and show.seats[14]|length >= c else False) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(21, 30) %}{{ render_pvr_seat("O", c, show.seats[14][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(21, 30) %}{{ render_pvr_seat("O", c, show.seats[14][c-1] if show.seats|length > 14 and show.seats[14]|length >= c else False) }}{% endfor %}</div>
                     <span class="row-letter">O</span>
                 </div>
 
-                <!-- Rows N, M, L, K, J, I, H: Left 1-10, Center 11-21, Right 22-31 -->
+                <!-- Rows N, M, L, K, J, I, H -->
                 {% set upper_rows = [('N', 13), ('M', 12), ('L', 11), ('K', 10), ('J', 9), ('I', 8), ('H', 7)] %}
                 {% for r_char, r_idx in upper_rows %}
                 <div class="pvr-row">
                     <span class="row-letter">{{ r_char }}</span>
-                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
                     <span class="row-letter">{{ r_char }}</span>
                 </div>
                 {% endfor %}
@@ -244,46 +264,46 @@
                 <!-- ================= LOWER TIER: CLASSIC (Rows G to A) ================= -->
                 <div class="tier-header">CLASSIC &bull; Rs. {{ show.price }}</div>
 
-                <!-- Rows G, F, E: Inset Left 1-6, Center 7-17, Right 18-23 -->
+                <!-- Rows G, F, E: Inset Wing Layout -->
                 {% set middle_rows = [('G', 6), ('F', 5), ('E', 4)] %}
                 {% for r_char, r_idx in middle_rows %}
                 <div class="pvr-row">
                     <span class="row-letter">{{ r_char }}</span>
                     <div class="seat-block" style="margin-left: 70px;">
-                        {% for c in range(1, 7) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}
+                        {% for c in range(1, 7) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}
                     </div>
                     <div class="aisle-gap"></div>
                     <div class="seat-block">
-                        {% for c in range(7, 18) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}
+                        {% for c in range(7, 18) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}
                     </div>
                     <div class="aisle-gap"></div>
                     <div class="seat-block" style="margin-right: 70px;">
-                        {% for c in range(18, 24) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}
+                        {% for c in range(18, 24) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}
                     </div>
                     <span class="row-letter">{{ r_char }}</span>
                 </div>
                 {% endfor %}
 
-                <!-- Rows D, C, B: Left 1-10, Center 11-21, Right 22-31 -->
+                <!-- Rows D, C, B -->
                 {% set lower_rows = [('D', 3), ('C', 2), ('B', 1)] %}
                 {% for r_char, r_idx in lower_rows %}
                 <div class="pvr-row">
                     <span class="row-letter">{{ r_char }}</span>
-                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1]) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
                     <span class="row-letter">{{ r_char }}</span>
                 </div>
                 {% endfor %}
 
-                <!-- Row A: Wide Continuous 34-seat span across the front -->
+                <!-- Row A: Wide Continuous 34-seat span -->
                 <div class="pvr-row">
                     <span class="row-letter">A</span>
                     <div class="seat-block">
                         {% for c in range(1, 35) %}
-                            {{ render_pvr_seat("A", c, show.seats[0][c-1]) }}
+                            {{ render_pvr_seat("A", c, show.seats[0][c-1] if show.seats|length > 0 and show.seats[0]|length >= c else False) }}
                         {% endfor %}
                     </div>
                     <span class="row-letter">A</span>
@@ -292,7 +312,7 @@
             </div>
         </div>
 
-        <!-- Centered Floating Zoom Toolbar -->
+        <!-- Sticky Floating Zoom Toolbar -->
         <div style="text-align: center;">
             <div class="zoom-toolbar">
                 <button type="button" class="btn btn-outline" onclick="applyZoom(-0.10)" style="padding: 4px 10px; border-radius: 50px;">−</button>
@@ -332,19 +352,6 @@
     </form>
 </div>
 
-<!-- Macro for Seat Pills -->
-{% macro render_pvr_seat(row_char, col_num, is_booked) %}
-    {% set seat_code = row_char ~ col_num|string %}
-    {% if is_booked %}
-        <div class="seat-pill occupied" title="Booked">{{ col_num }}</div>
-    {% else %}
-        <label style="margin: 0; line-height: 0;">
-            <input type="checkbox" name="seats" value="{{ seat_code }}" style="display:none;" class="seat-checkbox">
-            <div class="seat-pill available" data-seat="{{ seat_code }}">{{ col_num }}</div>
-        </label>
-    {% endif %}
-{% endmacro %}
-
 <script>
     const stage = document.getElementById('pvr-stage');
     const viewport = document.getElementById('viewport');
@@ -352,7 +359,6 @@
     const maxSeats = 10;
     const seatPrice = {{ show.price }};
 
-    // Auto-fit to viewport size
     let scale = window.innerWidth < 768 ? 0.60 : 0.88;
     updateZoomDisplay();
 
@@ -381,7 +387,6 @@
         }, 60);
     });
 
-    // Seat Selection and Active Badge Toggles
     const checkboxes = document.querySelectorAll('.seat-checkbox');
     const runningTotal = document.getElementById('running-total');
     const seatSummary = document.getElementById('seat-list-summary');
