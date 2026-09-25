@@ -23,8 +23,8 @@ ADMIN_RESET_PASSWORD = os.environ.get("ADMIN_RESET_PASSWORD", "reset123")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # 10 Rows (A-J) x 15 Columns = 150 Seats per auditorium (Fast rendering)
-ROWS = 10
-COLS = 15
+ROWS = 15
+COLS = 34
 TOTAL_SEATS_PER_SHOW = ROWS * COLS
 
 MOVIES = [
