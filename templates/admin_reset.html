@@ -2,24 +2,18 @@
 {% block content %}
 <div class="card" style="max-width: 440px; margin: 40px auto; text-align: center;">
     <h2 style="color: var(--danger); margin-bottom: 8px;">Factory Reset</h2>
-    <p style="color: #ff9999; font-size: 0.9rem; margin-bottom: 24px;">
-        ⚠️ <strong>Warning:</strong> This permanently deletes all reservation records and resets every single seat to available.
+    <p style="color: #ff8888; font-size: 0.9rem; margin-bottom: 22px;">
+        ⚠️ This permanently wipes all bookings and resets all seat availability matrices.
     </p>
 
-    <form method="POST" onsubmit="return confirmReset()">
+    <form method="POST" onsubmit="return confirm('Are you certain? All database records will be erased.');">
         <input type="password" name="password" placeholder="Admin Passcode" required
-               style="width: 100%; margin-bottom: 18px; text-align: center;">
+               style="width: 100%; margin-bottom: 16px; text-align: center;">
         <button type="submit" class="btn btn-danger" style="width: 100%;">Authorize Database Wipe</button>
     </form>
 
-    <div style="margin-top: 18px;">
-        <a href="{{ url_for('index') }}" class="btn btn-outline" style="width: 100%;">Cancel & Return</a>
+    <div style="margin-top: 16px;">
+        <a href="{{ url_for('index') }}" class="btn btn-outline" style="width: 100%;">Cancel</a>
     </div>
 </div>
-
-<script>
-    function confirmReset() {
-        return confirm("Are you completely certain? This will delete all rows in Supabase bookings!");
-    }
-</script>
 {% endblock %}
