@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card" style="max-width: 420px; margin: 40px auto; text-align: center;">
+<div class="card" style="max-width: 400px; margin: 40px auto; text-align: center;">
     <h2 style="color: var(--primary); margin-bottom: 8px;">Admin Authorization</h2>
-    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">Enter authentication key to inspect reservations</p>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Enter security PIN to inspect bookings</p>
 
     <form method="POST">
         <input type="password" name="password" placeholder="Passcode" required autofocus
-               style="width: 100%; margin-bottom: 18px; text-align: center; letter-spacing: 2px;">
-        <button type="submit" class="btn" style="width: 100%;">Verify & Open Dashboard</button>
+               style="width: 100%; margin-bottom: 16px; text-align: center; letter-spacing: 2px;">
+        <button type="submit" class="btn" style="width: 100%;">Authorize Access</button>
     </form>
 </div>
 {% endblock %}
