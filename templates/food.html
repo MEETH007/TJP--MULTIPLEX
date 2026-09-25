@@ -1,33 +1,33 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card" style="max-width: 680px; margin: auto;">
+<div class="card" style="max-width: 650px; margin: auto;">
     <h2 style="text-align:center; color: var(--primary);">Cinema Concessions</h2>
-    <p style="text-align:center; color: var(--text-muted); margin-bottom: 25px;">Optional — select snacks or proceed directly to checkout.</p>
+    <p style="text-align:center; color: var(--text-muted); margin-bottom: 25px; font-size: 0.9rem;">Optional snacks and drinks for your screening</p>
 
     <form method="POST">
-        <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
             {% for key, item in menu.items() %}
-            <div style="background: rgba(0,0,0,0.3); padding: 16px 20px; border-radius: var(--radius-sm); border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+            <div style="background: rgba(0,0,0,0.25); padding: 14px 18px; border-radius: var(--radius-sm); border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong style="font-size: 1.05rem;">{{ item[0] }}</strong><br>
+                    <strong style="font-size: 1rem;">{{ item[0] }}</strong><br>
                     <span style="color: var(--primary); font-weight: 600;">Rs. {{ item[1] }}</span>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <label style="font-size: 0.85rem; color: var(--text-muted);">Qty:</label>
                     <input type="number" name="qty_{{ key }}" data-price="{{ item[1] }}" class="food-qty" value="0" min="0" max="10" 
-                           style="width: 70px; text-align: center; font-weight: bold;">
+                           style="width: 65px; text-align: center; font-weight: bold;">
                 </div>
             </div>
             {% endfor %}
         </div>
 
-        <div style="margin-top: 25px; padding: 15px; background: rgba(0,0,0,0.4); border-radius: var(--radius-sm); text-align: center;">
-            <p style="font-size: 1rem; color: var(--text-muted);">Food Addition: <strong>Rs. <span id="food-sum">0</span></strong></p>
+        <div style="margin-top: 20px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); text-align: center;">
+            <p style="font-size: 0.95rem; color: var(--text-muted);">Concessions Subtotal: <strong style="color: var(--primary);">Rs. <span id="food-sum">0</span></strong></p>
         </div>
 
         <div style="text-align:center; margin-top: 24px;">
-            <button type="submit" class="btn" style="padding: 14px 32px; font-size: 1rem;">Complete Booking & Issue Pass →</button>
+            <button type="submit" class="btn" style="padding: 12px 30px; font-size: 0.95rem;">Confirm & Generate Pass →</button>
         </div>
     </form>
 </div>
