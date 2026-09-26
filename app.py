@@ -402,7 +402,7 @@ def admin_reset():
 @app.route("/admin/send-report", methods=["POST"])
 def send_daily_report():
     entered_key = request.form.get("admin_key", "")
-    # ✅ Accepts either admin key
+    # Accepts either your reset password or your bookings password
     if entered_key not in [ADMIN_RESET_PASSWORD, BOOKINGS_PASSWORD]:
         flash("Unauthorized key for revenue report!")
         return redirect(url_for("view_bookings"))
@@ -445,9 +445,16 @@ def send_daily_report():
             "content-type": "application/json"
         }
 
-        requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
-        flash("Daily revenue briefing dispatched to your email!")
+        response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+        print("Brevo Status Code:", response.status_code)
+        print("Brevo Response Body:", response.text)
+
+        if response.status_code in [200, 201, 202]:
+            flash("Daily revenue briefing dispatched to your email!")
+        else:
+            flash(f"Brevo rejected email: {response.text}")
     except Exception as e:
+        print("Report failed:", str(e))
         flash(f"Failed to generate report: {str(e)}")
 
     return redirect(url_for("view_bookings"))
