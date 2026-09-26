@@ -22,7 +22,6 @@ ADMIN_RESET_PASSWORD = os.environ.get("ADMIN_RESET_PASSWORD", "reset123")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 10 Rows (A-J) x 15 Columns = 150 Seats per auditorium (Fast rendering)
 ROWS = 15
 COLS = 34
 TOTAL_SEATS_PER_SHOW = ROWS * COLS
@@ -402,9 +401,16 @@ def admin_reset():
 @app.route("/admin/send-report", methods=["POST"])
 def send_daily_report():
     entered_key = request.form.get("admin_key", "")
-    # Accepts either your reset password or your bookings password
     if entered_key not in [ADMIN_RESET_PASSWORD, BOOKINGS_PASSWORD]:
         flash("Unauthorized key for revenue report!")
+        return redirect(url_for("view_bookings"))
+
+    # Resolve and sanitize recipient email
+    recipient = (os.environ.get("ADMIN_REPORT_EMAIL") or BREVO_SENDER_EMAIL or "").strip().strip('"').strip("'")
+    sender = (BREVO_SENDER_EMAIL or "").strip().strip('"').strip("'")
+
+    if not recipient or "@" not in recipient:
+        flash(f"Error: Invalid recipient email '{recipient}'. Please set ADMIN_REPORT_EMAIL in Render Environment.")
         return redirect(url_for("view_bookings"))
 
     try:
@@ -433,24 +439,25 @@ def send_daily_report():
         """
 
         payload = {
-            "sender": {"name": "TJP Cinema Ops", "email": BREVO_SENDER_EMAIL},
-            "to": [{"email": ADMIN_REPORT_EMAIL, "name": "Cinema Owner"}],
+            "sender": {"name": "TJP Cinema Ops", "email": sender},
+            "to": [{"email": recipient, "name": "Cinema Owner"}],
             "subject": f"📊 Daily Revenue Briefing — {now_str}",
             "htmlContent": report_html
         }
 
         headers = {
             "accept": "application/json",
-            "api-key": BREVO_API_KEY,
+            "api-key": (BREVO_API_KEY or "").strip(),
             "content-type": "application/json"
         }
 
+        print(f"Dispatching report from {sender} to {recipient}...")
         response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
         print("Brevo Status Code:", response.status_code)
         print("Brevo Response Body:", response.text)
 
         if response.status_code in [200, 201, 202]:
-            flash("Daily revenue briefing dispatched to your email!")
+            flash(f"Daily revenue briefing dispatched to {recipient}!")
         else:
             flash(f"Brevo rejected email: {response.text}")
     except Exception as e:
