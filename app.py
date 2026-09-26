@@ -402,7 +402,8 @@ def admin_reset():
 @app.route("/admin/send-report", methods=["POST"])
 def send_daily_report():
     entered_key = request.form.get("admin_key", "")
-    if entered_key != ADMIN_RESET_PASSWORD:
+    # ✅ Accepts either admin key
+    if entered_key not in [ADMIN_RESET_PASSWORD, BOOKINGS_PASSWORD]:
         flash("Unauthorized key for revenue report!")
         return redirect(url_for("view_bookings"))
 
