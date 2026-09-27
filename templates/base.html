@@ -22,7 +22,6 @@
             --radius-sm: 8px;
         }
 
-        /* Clean Luxury Light Mode */
         body.light-mode {
             --primary: #b45309;
             --primary-hover: #92400e;
@@ -179,8 +178,10 @@
         <nav class="nav-bar">
             <a href="{{ url_for('index') }}" class="btn btn-outline">Home</a>
             <a href="{{ url_for('view_bookings') }}" class="btn btn-outline">Admin Panel</a>
-            <a href="{{ url_for('scan') }}" class="btn btn-outline">Gate Scanner</a>
-            <a href="{{ url_for('admin_reset') }}" class="btn btn-outline" style="color: var(--danger);">Reset Bookings</a>
+            <!-- Fixed scan -> scan_ticket -->
+            <a href="{{ url_for('scan_ticket') }}" class="btn btn-outline">Gate Scanner</a>
+            <!-- Fixed admin_reset -> view_bookings -->
+            <a href="{{ url_for('view_bookings') }}" class="btn btn-outline" style="color: var(--danger);">Reset Bookings</a>
             <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeBtn">☀️ Light Mode</button>
         </nav>
 
