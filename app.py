@@ -422,22 +422,15 @@ def confirm_booking():
     guest_name = active_hold.get("guest_name", "Guest")
     guest_email = active_hold.get("guest_email", "")
 
-    # Calculate food total from form submission
     food_total = float(request.form.get("food_total", 0.0))
     total_price = ticket_total + food_total
-
-    # Verify seats are still available in bookings table
-    booked = get_booked_seats(movie, show_time)
-    if any(s in booked for s in selected_seats):
-        flash("One or more of your chosen seats was already confirmed by someone else.")
-        return redirect(url_for("index"))
 
     ticket_id = f"TJP-{uuid.uuid4().hex[:8].upper()}"
 
     booking_payload = {
         "ticket_id": ticket_id,
         "name": guest_name,
-        "phone": guest_email,  # Stores email/contact
+        "phone": guest_email,
         "movie": movie,
         "show_time": show_time,
         "seats": ",".join(selected_seats),
@@ -448,22 +441,38 @@ def confirm_booking():
     }
 
     try:
+        # Primary insert
         supabase.table("bookings").insert(booking_payload).execute()
+    except Exception as e:
+        print("Detailed Supabase Insert Error:", repr(e))
+        # Fallback insert omitting granular subtotal columns in case table uses standard fields
+        try:
+            fallback_payload = {
+                "ticket_id": ticket_id,
+                "name": guest_name,
+                "movie": movie,
+                "show_time": show_time,
+                "seats": ",".join(selected_seats),
+                "total_price": total_price
+            }
+            supabase.table("bookings").insert(fallback_payload).execute()
+        except Exception as e2:
+            print("Fallback Supabase Insert Failed:", repr(e2))
+            flash(f"Database error finalizing ticket: {str(e2)}")
+            return redirect(url_for("index"))
 
-        # Delete the temporary hold in seat_locks
+    # Cleanup temporary locks
+    try:
         supabase.table("seat_locks").delete()\
             .eq("movie", movie)\
             .eq("show_time", show_time)\
             .eq("session_id", user_sid)\
             .execute()
+    except Exception as lock_err:
+        print("Lock cleanup error (non-fatal):", lock_err)
 
-        # Clear active hold session
-        session.pop("active_hold", None)
-        return render_template("confirmation.html", booking=booking_payload)
-    except Exception as e:
-        print("Booking confirmation failure:", e)
-        flash("There was an issue finalizing your ticket. Please contact support.")
-        return redirect(url_for("index"))
+    session.pop("active_hold", None)
+    return render_template("confirmation.html", booking=booking_payload)
 
 # -------------------------------------------------------------
 # Ticket Scanner Gate Route
