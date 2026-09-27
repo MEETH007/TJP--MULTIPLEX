@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Macro defined FIRST so Jinja knows it before rendering the rows -->
-{% macro render_pvr_seat(row_char, col_num, is_booked) %}
+<!-- Macro checking real-time unavailable/locked sets -->
+{% macro render_pvr_seat(row_char, col_num) %}
     {% set seat_code = row_char ~ col_num|string %}
-    {% if is_booked %}
-        <div class="seat-pill occupied" title="Booked">{{ col_num }}</div>
+    {% if seat_code in unavailable_seats and seat_code not in my_locked_seats %}
+        <div class="seat-pill occupied" title="Booked or Locked by another guest">{{ col_num }}</div>
     {% else %}
         <label style="margin: 0; line-height: 0;">
-            <input type="checkbox" name="seats" value="{{ seat_code }}" style="display:none;" class="seat-checkbox">
-            <div class="seat-pill available" data-seat="{{ seat_code }}">{{ col_num }}</div>
+            <input type="checkbox" name="seats" value="{{ seat_code }}" style="display:none;" class="seat-checkbox" {% if seat_code in my_locked_seats %}checked{% endif %}>
+            <div class="seat-pill available {% if seat_code in my_locked_seats %}selected{% endif %}" data-seat="{{ seat_code }}">{{ col_num }}</div>
         </label>
     {% endif %}
 {% endmacro %}
@@ -223,9 +223,9 @@
         </div>
     </div>
 
-    <!-- Booking Form -->
-    <form method="POST" action="{{ url_for('book') }}" id="booking-form" onsubmit="return validateSelection()">
-        <input type="hidden" name="show_id" value="{{ show_id }}">
+    <!-- Booking Form: fixed endpoint to food_and_snacks -->
+    <form method="POST" action="{{ url_for('food_and_snacks') }}" id="booking-form" onsubmit="return handleSeatLock(event)">
+        <input type="hidden" name="show_id" id="show_id_input" value="{{ show_id }}">
 
         <div class="auditorium-viewport" id="viewport">
             <div id="pvr-stage">
@@ -236,24 +236,24 @@
                 <!-- Row O -->
                 <div class="pvr-row">
                     <span class="row-letter">O</span>
-                    <div class="seat-block">{% for c in range(1, 10) %}{{ render_pvr_seat("O", c, show.seats[14][c-1] if show.seats|length > 14 and show.seats[14]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(1, 10) %}{{ render_pvr_seat("O", c) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(10, 21) %}{{ render_pvr_seat("O", c, show.seats[14][c-1] if show.seats|length > 14 and show.seats[14]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(10, 21) %}{{ render_pvr_seat("O", c) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(21, 30) %}{{ render_pvr_seat("O", c, show.seats[14][c-1] if show.seats|length > 14 and show.seats[14]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(21, 30) %}{{ render_pvr_seat("O", c) }}{% endfor %}</div>
                     <span class="row-letter">O</span>
                 </div>
 
                 <!-- Rows N, M, L, K, J, I, H -->
-                {% set upper_rows = [('N', 13), ('M', 12), ('L', 11), ('K', 10), ('J', 9), ('I', 8), ('H', 7)] %}
-                {% for r_char, r_idx in upper_rows %}
+                {% set upper_rows = ['N', 'M', 'L', 'K', 'J', 'I', 'H'] %}
+                {% for r_char in upper_rows %}
                 <div class="pvr-row">
                     <span class="row-letter">{{ r_char }}</span>
-                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}</div>
                     <span class="row-letter">{{ r_char }}</span>
                 </div>
                 {% endfor %}
@@ -265,35 +265,35 @@
                 <div class="tier-header">CLASSIC &bull; Rs. {{ show.price }}</div>
 
                 <!-- Rows G, F, E: Inset Wing Layout -->
-                {% set middle_rows = [('G', 6), ('F', 5), ('E', 4)] %}
-                {% for r_char, r_idx in middle_rows %}
+                {% set middle_rows = ['G', 'F', 'E'] %}
+                {% for r_char in middle_rows %}
                 <div class="pvr-row">
                     <span class="row-letter">{{ r_char }}</span>
                     <div class="seat-block" style="margin-left: 70px;">
-                        {% for c in range(1, 7) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}
+                        {% for c in range(1, 7) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}
                     </div>
                     <div class="aisle-gap"></div>
                     <div class="seat-block">
-                        {% for c in range(7, 18) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}
+                        {% for c in range(7, 18) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}
                     </div>
                     <div class="aisle-gap"></div>
                     <div class="seat-block" style="margin-right: 70px;">
-                        {% for c in range(18, 24) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}
+                        {% for c in range(18, 24) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}
                     </div>
                     <span class="row-letter">{{ r_char }}</span>
                 </div>
                 {% endfor %}
 
                 <!-- Rows D, C, B -->
-                {% set lower_rows = [('D', 3), ('C', 2), ('B', 1)] %}
-                {% for r_char, r_idx in lower_rows %}
+                {% set lower_rows = ['D', 'C', 'B'] %}
+                {% for r_char in lower_rows %}
                 <div class="pvr-row">
                     <span class="row-letter">{{ r_char }}</span>
-                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(1, 11) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(11, 22) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}</div>
                     <div class="aisle-gap"></div>
-                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c, show.seats[r_idx][c-1] if show.seats|length > r_idx and show.seats[r_idx]|length >= c else False) }}{% endfor %}</div>
+                    <div class="seat-block">{% for c in range(22, 32) %}{{ render_pvr_seat(r_char, c) }}{% endfor %}</div>
                     <span class="row-letter">{{ r_char }}</span>
                 </div>
                 {% endfor %}
@@ -303,7 +303,7 @@
                     <span class="row-letter">A</span>
                     <div class="seat-block">
                         {% for c in range(1, 35) %}
-                            {{ render_pvr_seat("A", c, show.seats[0][c-1] if show.seats|length > 0 and show.seats[0]|length >= c else False) }}
+                            {{ render_pvr_seat("A", c) }}
                         {% endfor %}
                     </div>
                     <span class="row-letter">A</span>
@@ -335,17 +335,7 @@
                 </div>
             </div>
 
-            <div style="margin-bottom: 12px;">
-                <input type="text" name="name" required placeholder="Guest Name" style="width: 100%;">
-            </div>
-            <div style="margin-bottom: 12px;">
-                <input type="email" name="email" required placeholder="Email Address for Tickets" style="width: 100%;">
-            </div>
-            <div style="margin-bottom: 18px;">
-                <input type="number" name="age" min="1" max="120" required placeholder="Age" style="width: 100%;">
-            </div>
-
-            <button type="submit" class="btn" style="width: 100%; padding: 12px; font-size: 1rem;">
+            <button type="submit" id="submit-btn" class="btn" style="width: 100%; padding: 12px; font-size: 1rem;">
                 Proceed to Food & Snacks →
             </button>
         </div>
@@ -358,6 +348,7 @@
     const zoomText = document.getElementById('zoom-percentage');
     const maxSeats = 10;
     const seatPrice = {{ show.price }};
+    const showId = {{ show_id }};
 
     let scale = window.innerWidth < 768 ? 0.60 : 0.88;
     updateZoomDisplay();
@@ -385,6 +376,7 @@
         setTimeout(() => {
             viewport.scrollLeft = (stage.offsetWidth * scale - viewport.clientWidth) / 2;
         }, 60);
+        updateSelectionSummary();
     });
 
     const checkboxes = document.querySelectorAll('.seat-checkbox');
@@ -408,19 +400,56 @@
                 pill.classList.remove('selected');
             }
 
-            const currentSelected = Array.from(document.querySelectorAll('.seat-checkbox:checked')).map(c => c.value);
-            runningTotal.textContent = (currentSelected.length * seatPrice).toLocaleString('en-IN');
-            seatSummary.textContent = currentSelected.length > 0 ? currentSelected.join(', ') : 'None';
+            updateSelectionSummary();
         });
     });
 
-    function validateSelection() {
-        const count = document.querySelectorAll('.seat-checkbox:checked').length;
-        if (count === 0) {
-            alert("Please pick at least one seat to proceed.");
+    function updateSelectionSummary() {
+        const currentSelected = Array.from(document.querySelectorAll('.seat-checkbox:checked')).map(c => c.value);
+        runningTotal.textContent = (currentSelected.length * seatPrice).toLocaleString('en-IN');
+        seatSummary.textContent = currentSelected.length > 0 ? currentSelected.join(', ') : 'None';
+    }
+
+    async function handleSeatLock(e) {
+        e.preventDefault();
+        const selected = Array.from(document.querySelectorAll('.seat-checkbox:checked')).map(c => c.value);
+        
+        if (selected.length === 0) {
+            alert("Please select at least one seat to proceed.");
             return false;
         }
-        return true;
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.textContent = "Holding your seats...";
+
+        try {
+            // Lock seats in Supabase for 7 minutes
+            const res = await fetch("/api/lock-seats", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    show_id: showId,
+                    seats: selected
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                // Submit form to navigate to snacks
+                document.getElementById('booking-form').submit();
+            } else {
+                alert(data.message || "Failed to hold seats. Please refresh and try again.");
+                btn.disabled = false;
+                btn.textContent = "Proceed to Food & Snacks →";
+                location.reload();
+            }
+        } catch (err) {
+            console.error(err);
+            // Fallback submission if API call network interrupts
+            document.getElementById('booking-form').submit();
+        }
+        return false;
     }
 </script>
 {% endblock %}
