@@ -290,20 +290,84 @@ def api_lock_seats():
     except Exception as e:
         print("Failed to acquire lock:", e)
         return jsonify({"success": False, "message": "Could not lock seats. Please try again."}), 500
+        
+FOOD_MENU = {
+    "butter_popcorn": {
+        "name": "Classic Butter Popcorn (Salted)",
+        "price": 210.0,
+        "category": "Popcorn",
+        "badge": "Pure Veg",
+        "image": "🍿"
+    },
+    "cheese_popcorn": {
+        "name": "Gourmet Cheddar Cheese Popcorn",
+        "price": 260.0,
+        "category": "Popcorn",
+        "badge": "Pure Veg",
+        "image": "🍿"
+    },
+    "caramel_popcorn": {
+        "name": "Crunchy Golden Caramel Popcorn",
+        "price": 270.0,
+        "category": "Popcorn",
+        "badge": "Pure Veg",
+        "image": "🍿"
+    },
+    "paneer_tikka_burger": {
+        "name": "Crispy Paneer Tikka Burger",
+        "price": 240.0,
+        "category": "Hot Bites",
+        "badge": "Pure Veg",
+        "image": "🍔"
+    },
+    "mexican_nachos": {
+        "name": "Crispy Tortilla Nachos & Warm Cheese Dip",
+        "price": 220.0,
+        "category": "Snacks",
+        "badge": "Pure Veg",
+        "image": "🧀"
+    },
+    "peri_peri_fries": {
+        "name": "Peri Peri Crinkle French Fries",
+        "price": 190.0,
+        "category": "Snacks",
+        "badge": "Pure Veg",
+        "image": "🍟"
+    },
+    "cheese_corn_sandwich": {
+        "name": "Grilled Cheese & Sweet Corn Sandwich",
+        "price": 210.0,
+        "category": "Hot Bites",
+        "badge": "Pure Veg",
+        "image": "🥪"
+    },
+    "coca_cola": {
+        "name": "Chilled Coca-Cola Fountain Cup (650ml)",
+        "price": 160.0,
+        "category": "Beverages",
+        "badge": "Pure Veg",
+        "image": "🥤"
+    },
+    "cold_coffee": {
+        "name": "Thick Creamy Cold Coffee",
+        "price": 180.0,
+        "category": "Beverages",
+        "badge": "Pure Veg",
+        "image": "🧋"
+    }
+}
 
 @app.route("/food-and-snacks", methods=["GET", "POST"])
 def food_and_snacks():
     shows = get_all_shows()
 
     if request.method == "POST":
-        # Capture form fields sent from seats.html
         show_id = request.form.get("show_id", type=int)
         guest_name = request.form.get("name", "Guest").strip()
         guest_email = request.form.get("email", "").strip()
         guest_age = request.form.get("age", "").strip()
         selected_seats = request.form.getlist("seats")
 
-        # Fallback to comma-separated seats if sent as a single string
         if not selected_seats and request.form.get("seats"):
             selected_seats = [s.strip() for s in request.form.get("seats").split(",") if s.strip()]
 
@@ -312,11 +376,9 @@ def food_and_snacks():
         else:
             show = shows[0]
 
-        # Calculate ticket cost
         ticket_price = float(show.get("price", 250.0))
         ticket_total = len(selected_seats) * ticket_price
 
-        # Update session with complete hold details
         session["active_hold"] = {
             "show_id": show_id,
             "movie": show["movie"],
@@ -332,10 +394,17 @@ def food_and_snacks():
 
     active_hold = session.get("active_hold")
     if not active_hold or not active_hold.get("seats"):
-        flash("Your seat selection timed out or is empty. Please reselect your seats.")
+        flash("Your seat selection timed out or is empty. Please select your seats again.")
         return redirect(url_for("index"))
 
-    return render_template("food.html", active_hold=active_hold)
+    # Pass menu, food_items, and active_hold so food.html renders properly
+    return render_template(
+        "food.html",
+        active_hold=active_hold,
+        menu=FOOD_MENU,
+        food_menu=FOOD_MENU,
+        food_items=FOOD_MENU
+    )
     
 @app.route("/confirm-booking", methods=["POST"])
 def confirm_booking():
