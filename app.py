@@ -411,17 +411,22 @@ def confirm_booking():
     user_sid = get_session_id()
     active_hold = session.get("active_hold")
 
-    customer_name = request.form.get("name", "Guest").strip()
-    customer_phone = request.form.get("phone", "").strip()
-    movie = request.form.get("movie") or (active_hold.get("movie") if active_hold else "")
-    show_time = request.form.get("show_time") or (active_hold.get("show_time") if active_hold else "")
-    seats_raw = request.form.get("seats", "")
-    ticket_total = float(request.form.get("ticket_total", 0.0))
+    if not active_hold or not active_hold.get("seats"):
+        flash("Your seat selection has expired. Please choose your seats again.")
+        return redirect(url_for("index"))
+
+    movie = active_hold.get("movie")
+    show_time = active_hold.get("show_time")
+    selected_seats = active_hold.get("seats", [])
+    ticket_total = float(active_hold.get("ticket_total", 0.0))
+    guest_name = active_hold.get("guest_name", "Guest")
+    guest_email = active_hold.get("guest_email", "")
+
+    # Calculate food total from form submission
     food_total = float(request.form.get("food_total", 0.0))
     total_price = ticket_total + food_total
 
-    selected_seats = [s.strip() for s in seats_raw.split(",") if s.strip()]
-
+    # Verify seats are still available in bookings table
     booked = get_booked_seats(movie, show_time)
     if any(s in booked for s in selected_seats):
         flash("One or more of your chosen seats was already confirmed by someone else.")
@@ -431,8 +436,8 @@ def confirm_booking():
 
     booking_payload = {
         "ticket_id": ticket_id,
-        "name": customer_name,
-        "phone": customer_phone,
+        "name": guest_name,
+        "phone": guest_email,  # Stores email/contact
         "movie": movie,
         "show_time": show_time,
         "seats": ",".join(selected_seats),
@@ -445,12 +450,14 @@ def confirm_booking():
     try:
         supabase.table("bookings").insert(booking_payload).execute()
 
+        # Delete the temporary hold in seat_locks
         supabase.table("seat_locks").delete()\
             .eq("movie", movie)\
             .eq("show_time", show_time)\
             .eq("session_id", user_sid)\
             .execute()
 
+        # Clear active hold session
         session.pop("active_hold", None)
         return render_template("confirmation.html", booking=booking_payload)
     except Exception as e:
