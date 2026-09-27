@@ -472,7 +472,11 @@ def confirm_booking():
         print("Lock cleanup error (non-fatal):", lock_err)
 
     session.pop("active_hold", None)
-    return render_template("confirmation.html", booking=booking_payload)
+    return render_template(
+        "confirmation.html", 
+        booking=booking_payload, 
+        b=booking_payload
+    )
 
 # -------------------------------------------------------------
 # Ticket Scanner Gate Route
