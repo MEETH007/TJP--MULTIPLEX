@@ -293,13 +293,50 @@ def api_lock_seats():
 
 @app.route("/food-and-snacks", methods=["GET", "POST"])
 def food_and_snacks():
+    shows = get_all_shows()
+
+    if request.method == "POST":
+        # Capture form fields sent from seats.html
+        show_id = request.form.get("show_id", type=int)
+        guest_name = request.form.get("name", "Guest").strip()
+        guest_email = request.form.get("email", "").strip()
+        guest_age = request.form.get("age", "").strip()
+        selected_seats = request.form.getlist("seats")
+
+        # Fallback to comma-separated seats if sent as a single string
+        if not selected_seats and request.form.get("seats"):
+            selected_seats = [s.strip() for s in request.form.get("seats").split(",") if s.strip()]
+
+        if show_id is not None and 0 <= show_id < len(shows):
+            show = shows[show_id]
+        else:
+            show = shows[0]
+
+        # Calculate ticket cost
+        ticket_price = float(show.get("price", 250.0))
+        ticket_total = len(selected_seats) * ticket_price
+
+        # Update session with complete hold details
+        session["active_hold"] = {
+            "show_id": show_id,
+            "movie": show["movie"],
+            "screen": show.get("screen", ""),
+            "show_time": show["time"],
+            "seats": selected_seats,
+            "guest_name": guest_name,
+            "guest_email": guest_email,
+            "guest_age": guest_age,
+            "price_per_seat": ticket_price,
+            "ticket_total": ticket_total
+        }
+
     active_hold = session.get("active_hold")
-    if not active_hold:
-        flash("Your seat selection timed out. Please choose your seats again.")
+    if not active_hold or not active_hold.get("seats"):
+        flash("Your seat selection timed out or is empty. Please reselect your seats.")
         return redirect(url_for("index"))
 
     return render_template("food.html", active_hold=active_hold)
-
+    
 @app.route("/confirm-booking", methods=["POST"])
 def confirm_booking():
     user_sid = get_session_id()
