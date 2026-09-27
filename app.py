@@ -5,6 +5,12 @@ from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from supabase import create_client, Client
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "tjp_multiplex_secret_super_key_2026")
 
@@ -28,7 +34,6 @@ BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
 BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL", "").strip().strip('"').strip("'")
 ADMIN_REPORT_EMAIL = (os.environ.get("ADMIN_REPORT_EMAIL") or BREVO_SENDER_EMAIL or "").strip().strip('"').strip("'")
 
-# Seat hold duration in minutes
 HOLD_MINUTES = 7
 
 # -------------------------------------------------------------
@@ -82,7 +87,6 @@ MOVIES = [
     }
 ]
 
-# Helper to flatten shows with complete metadata
 def get_all_shows():
     show_list = []
     for m in MOVIES:
@@ -102,13 +106,11 @@ def get_all_shows():
 # Seat Locking & Availability Helpers
 # -------------------------------------------------------------
 def get_session_id():
-    """Retrieves or initializes a unique session ID for the user."""
     if "session_uid" not in session:
         session["session_uid"] = uuid.uuid4().hex
     return session["session_uid"]
 
 def clean_expired_locks():
-    """Purges locks that have passed their expiration timestamp."""
     try:
         now_iso = datetime.now(timezone.utc).isoformat()
         supabase.table("seat_locks").delete().lt("expires_at", now_iso).execute()
@@ -116,7 +118,6 @@ def clean_expired_locks():
         print("clean_expired_locks error:", e)
 
 def get_booked_seats(movie, show_time):
-    """Returns a set of permanently booked seat codes from confirmed bookings."""
     try:
         res = supabase.table("bookings")\
             .select("seats")\
@@ -136,12 +137,6 @@ def get_booked_seats(movie, show_time):
         return set()
 
 def get_seat_status_maps(movie, show_time, current_session_id):
-    """
-    Returns:
-      booked_set: permanently booked seats
-      locked_by_others: seats held by other users
-      locked_by_me: seats currently locked by the active user session
-    """
     clean_expired_locks()
     booked_set = get_booked_seats(movie, show_time)
 
@@ -177,24 +172,40 @@ def get_seat_status_maps(movie, show_time, current_session_id):
 def index():
     return render_template("index.html", movies=MOVIES, all_shows=get_all_shows())
 
+# Multi-route adapter: prevents URL BuildErrors regardless of what parameters index.html passes
+@app.route("/select-seats", defaults={"show_id": None})
 @app.route("/select-seats/<int:show_id>")
 def select_seats(show_id):
     shows = get_all_shows()
+
+    # Fallbacks if index.html passes query strings (e.g. ?movie_id=0 or ?id=0 or ?show_id=0)
+    if show_id is None:
+        if request.args.get("show_id") is not None:
+            show_id = request.args.get("show_id", type=int)
+        elif request.args.get("movie_id") is not None:
+            mid = request.args.get("movie_id", type=int)
+            # Find first show matching that movie id
+            show_id = next((i for i, s in enumerate(shows) if s["movie_id"] == mid), 0)
+        elif request.args.get("id") is not None:
+            mid = request.args.get("id", type=int)
+            show_id = next((i for i, s in enumerate(shows) if s["movie_id"] == mid), 0)
+        else:
+            show_id = 0
+
     if show_id < 0 or show_id >= len(shows):
-        flash("Selected show does not exist.")
-        return redirect(url_for("index"))
+        show_id = 0
 
     show = shows[show_id]
     user_sid = get_session_id()
     booked, locked_others, locked_me = get_seat_status_maps(show["movie"], show["time"], user_sid)
 
-    # Any seat taken by others is marked unavailable
     unavailable = booked.union(locked_others)
 
     return render_template(
         "seats.html",
         show=show,
         show_id=show_id,
+        movie=show,
         unavailable_seats=list(unavailable),
         my_locked_seats=list(locked_me),
         hold_minutes=HOLD_MINUTES
@@ -202,7 +213,6 @@ def select_seats(show_id):
 
 @app.route("/api/lock-seats", methods=["POST"])
 def api_lock_seats():
-    """AJAX endpoint: Holds seats for HOLD_MINUTES while user completes snacks & payment."""
     data = request.get_json() or {}
     show_id = data.get("show_id")
     seats = data.get("seats", [])
@@ -225,22 +235,19 @@ def api_lock_seats():
     if conflict:
         return jsonify({
             "success": False,
-            "message": f"Seat(s) {', '.join(conflict)} have just been taken by another guest. Please pick other seats."
+            "message": f"Seat(s) {', '.join(conflict)} were just held by another guest. Please pick other seats."
         }), 409
 
-    # Set new expiry
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=HOLD_MINUTES)
     expires_iso = expires_at.isoformat()
 
     try:
-        # Clear any prior lock held by this session for this specific show
         supabase.table("seat_locks").delete()\
             .eq("movie", movie)\
             .eq("show_time", show_time)\
             .eq("session_id", user_sid)\
             .execute()
 
-        # Insert new temporary holds
         rows = [
             {
                 "movie": movie,
@@ -253,7 +260,6 @@ def api_lock_seats():
         ]
         supabase.table("seat_locks").insert(rows).execute()
 
-        # Store in session for the order flow
         session["active_hold"] = {
             "movie": movie,
             "show_time": show_time,
@@ -292,13 +298,11 @@ def confirm_booking():
 
     selected_seats = [s.strip() for s in seats_raw.split(",") if s.strip()]
 
-    # Validate that seats are not permanently booked by someone else
     booked = get_booked_seats(movie, show_time)
     if any(s in booked for s in selected_seats):
         flash("One or more of your chosen seats was already confirmed by someone else.")
         return redirect(url_for("index"))
 
-    # Generate Unique Ticket ID
     ticket_id = f"TJP-{uuid.uuid4().hex[:8].upper()}"
 
     booking_payload = {
@@ -317,7 +321,6 @@ def confirm_booking():
     try:
         supabase.table("bookings").insert(booking_payload).execute()
 
-        # Remove the temporary hold now that booking is confirmed
         supabase.table("seat_locks").delete()\
             .eq("movie", movie)\
             .eq("show_time", show_time)\
@@ -380,10 +383,8 @@ def view_bookings():
 
 @app.route("/admin/send-report", methods=["POST"])
 def send_daily_report():
-    """Triggered manually from /bookings or automatically via cron-job.org."""
     entered_key = request.form.get("admin_key", "").strip()
     if entered_key not in [ADMIN_RESET_PASSWORD, BOOKINGS_PASSWORD]:
-        print(f"Unauthorized report attempt with key: {entered_key}")
         flash("Unauthorized key for revenue report!")
         return redirect(url_for("view_bookings"))
 
@@ -432,10 +433,8 @@ def send_daily_report():
             "content-type": "application/json"
         }
 
-        print(f"Dispatching report from {sender} to {recipient}...")
         response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=25)
-        print("Brevo Status Code:", response.status_code)
-        print("Brevo Response Body:", response.text)
+        print("Brevo Status:", response.status_code, response.text)
 
         if response.status_code in [200, 201, 202]:
             flash(f"Daily revenue briefing dispatched to {recipient}!")
