@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card" style="max-width: 650px; margin: auto;">
-    <h2 style="text-align:center; color: var(--primary);">Cinema Concessions</h2>
+    <h2 style="text-align:center; color: var(--primary);">Cinema Concessions & Guest Details</h2>
     <p style="text-align:center; color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">
         Screening: <strong>{{ active_hold.movie }}</strong> ({{ active_hold.show_time }})<br>
         Seats: <strong>{{ active_hold.seats|join(', ') }}</strong>
     </p>
 
     <form method="POST" action="{{ url_for('confirm_booking') }}">
-        <div style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- SNACKS SECTION -->
+        <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 12px; border-bottom: 1px solid var(--card-border); padding-bottom: 6px;">1. Add Concessions (Optional)</h3>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
             {% for key, item in menu.items() %}
-            
-            {# Safely extract title and price whether item is a dict or a list #}
             {% set item_name = item.name if item.name is defined else (item[0] if item|length > 0 else key) %}
             {% set item_price = item.price if item.price is defined else (item[1] if item|length > 1 else 0) %}
             {% set item_icon = item.image if item.image is defined else (item[2] if item|length > 2 else '🍿') %}
@@ -38,9 +38,30 @@
             {% endfor %}
         </div>
 
-        <!-- Carries the calculated food total to confirm_booking -->
         <input type="hidden" name="food_total" id="hidden-food-total" value="0">
 
+        <!-- GUEST CONTACT DETAILS -->
+        <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 12px; border-bottom: 1px solid var(--card-border); padding-bottom: 6px;">2. Contact & Boarding Pass Details</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+            <div>
+                <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Primary Guest Name *</label>
+                <input type="text" name="name" required placeholder="Full Name" style="width: 100%;">
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <div style="flex: 2;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Email Address *</label>
+                    <input type="email" name="email" required placeholder="ticket@example.com" style="width: 100%;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Age *</label>
+                    <input type="number" name="age" min="1" max="120" required placeholder="Age" style="width: 100%;">
+                </div>
+            </div>
+        </div>
+
+        <!-- TOTAL SUMMARY -->
         <div style="margin-top: 20px; padding: 14px; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); text-align: center; border: 1px solid var(--card-border);">
             <p style="font-size: 0.95rem; color: var(--text-muted);">
                 Tickets: <strong>Rs. {{ "%.2f"|format(active_hold.ticket_total) }}</strong> &bull; 
