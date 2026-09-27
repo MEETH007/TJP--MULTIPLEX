@@ -2,36 +2,47 @@
 {% block content %}
 <div class="card" style="max-width: 650px; margin: auto;">
     <h2 style="text-align:center; color: var(--primary);">Cinema Concessions</h2>
-    <p style="text-align:center; color: var(--text-muted); margin-bottom: 25px; font-size: 0.9rem;">100% Pure Veg snacks and drinks for your screening</p>
+    <p style="text-align:center; color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">
+        Screening: <strong>{{ active_hold.movie }}</strong> ({{ active_hold.show_time }})<br>
+        Seats: <strong>{{ active_hold.seats|join(', ') }}</strong>
+    </p>
 
-    <form method="POST">
+    <!-- FORM NOW SUBMITS TO confirm_booking -->
+    <form method="POST" action="{{ url_for('confirm_booking') }}">
         <div style="display: flex; flex-direction: column; gap: 12px;">
             {% for key, item in menu.items() %}
             <div style="background: rgba(0,0,0,0.25); padding: 14px 18px; border-radius: var(--radius-sm); border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <strong style="font-size: 1rem;">
-                        {{ item.image if item.image is defined else (item[2] if item|length > 2 else '🍿') }} 
-                        {{ item.name if item.name is defined else item[0] }}
+                        {{ item[2] if item|length > 2 else '🍿' }} {{ item[0] }}
                     </strong><br>
-                    <span style="color: var(--primary); font-weight: 600;">Rs. {{ item.price if item.price is defined else item[1] }}</span>
+                    <span style="color: var(--primary); font-weight: 600;">Rs. {{ item[1] }}</span>
                     <span style="display: inline-block; margin-left: 8px; font-size: 0.75rem; background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 1px 6px; border-radius: 4px;">Pure Veg</span>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <label style="font-size: 0.85rem; color: var(--text-muted);">Qty:</label>
-                    <input type="number" name="qty_{{ key }}" data-price="{{ item.price if item.price is defined else item[1] }}" class="food-qty" value="0" min="0" max="10" 
+                    <input type="number" name="qty_{{ key }}" data-price="{{ item[1] }}" class="food-qty" value="0" min="0" max="10" 
                            style="width: 65px; text-align: center; font-weight: bold;">
                 </div>
             </div>
             {% endfor %}
         </div>
 
-        <div style="margin-top: 20px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); text-align: center;">
-            <p style="font-size: 0.95rem; color: var(--text-muted);">Concessions Subtotal: <strong style="color: var(--primary);">Rs. <span id="food-sum">0</span></strong></p>
+        <!-- Hidden input to carry food subtotal -->
+        <input type="hidden" name="food_total" id="hidden-food-total" value="0">
+
+        <div style="margin-top: 20px; padding: 14px; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); text-align: center;">
+            <p style="font-size: 0.95rem; color: var(--text-muted);">
+                Tickets: <strong>Rs. {{ "%.2f"|format(active_hold.ticket_total) }}</strong> &bull; 
+                Concessions: <strong style="color: var(--primary);">Rs. <span id="food-sum">0</span></strong>
+            </p>
         </div>
 
         <div style="text-align:center; margin-top: 24px;">
-            <button type="submit" class="btn" style="padding: 12px 30px; font-size: 0.95rem;">Confirm & Generate Pass →</button>
+            <button type="submit" class="btn" style="padding: 12px 30px; font-size: 1rem; width: 100%;">
+                Confirm & Generate Ticket Pass →
+            </button>
         </div>
     </form>
 </div>
@@ -39,6 +50,7 @@
 <script>
     const foodInputs = document.querySelectorAll('.food-qty');
     const foodSumElem = document.getElementById('food-sum');
+    const hiddenTotal = document.getElementById('hidden-food-total');
 
     foodInputs.forEach(input => {
         input.addEventListener('input', () => {
@@ -49,6 +61,7 @@
                 sum += qty * price;
             });
             foodSumElem.textContent = sum.toLocaleString('en-IN');
+            hiddenTotal.value = sum;
         });
     });
 </script>
