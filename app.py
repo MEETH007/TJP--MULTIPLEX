@@ -1,31 +1,39 @@
 import os
-import json
-from datetime import datetime
+import uuid
 import requests
-from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from supabase import create_client
-
-load_dotenv()
+from datetime import datetime, timezone, timedelta
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from supabase import create_client, Client
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "tjp-cinema-secret-2026")
+app.secret_key = os.environ.get("SECRET_KEY", "tjp_multiplex_secret_super_key_2026")
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
-BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL")
-ADMIN_REPORT_EMAIL = os.environ.get("ADMIN_REPORT_EMAIL", BREVO_SENDER_EMAIL)
+# -------------------------------------------------------------
+# Supabase Configuration
+# -------------------------------------------------------------
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
-BOOKINGS_PASSWORD = os.environ.get("BOOKINGS_PASSWORD", "admin123")
-ADMIN_RESET_PASSWORD = os.environ.get("ADMIN_RESET_PASSWORD", "reset123")
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("WARNING: SUPABASE_URL or SUPABASE_KEY is missing from environment variables.")
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ROWS = 15
-COLS = 34
-TOTAL_SEATS_PER_SHOW = ROWS * COLS
+# -------------------------------------------------------------
+# Environment & Admin Configuration
+# -------------------------------------------------------------
+BOOKINGS_PASSWORD = os.environ.get("BOOKINGS_PASSWORD", "admin123").strip()
+ADMIN_RESET_PASSWORD = os.environ.get("ADMIN_RESET_PASSWORD", "reset123").strip()
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
+BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL", "").strip().strip('"').strip("'")
+ADMIN_REPORT_EMAIL = (os.environ.get("ADMIN_REPORT_EMAIL") or BREVO_SENDER_EMAIL or "").strip().strip('"').strip("'")
 
+# Seat hold duration in minutes
+HOLD_MINUTES = 7
+
+# -------------------------------------------------------------
+# Movie Data & Schedules
+# -------------------------------------------------------------
 MOVIES = [
     {
         "id": 0,
@@ -74,353 +82,326 @@ MOVIES = [
     }
 ]
 
+# Helper to flatten shows with complete metadata
 def get_all_shows():
-    shows = []
-    idx = 0
-    for movie in MOVIES:
-        for t in movie["times"]:
-            shows.append({
-                "show_id": idx,
-                "movie_id": movie["id"],
-                "movie": movie["title"],
-                "screen": movie["screen"],
-                "price": movie["price"],
-                "poster_url": movie["poster_url"],
-                "time": t
+    show_list = []
+    for m in MOVIES:
+        for t in m["times"]:
+            show_list.append({
+                "movie_id": m["id"],
+                "movie": m["title"],
+                "screen": m["screen"],
+                "price": m["price"],
+                "time": t,
+                "poster_url": m["poster_url"],
+                "trailer_url": m["trailer_url"]
             })
-            idx += 1
-    return shows
+    return show_list
 
-def get_booked_seats(movie_title, time):
-    """Fetches already-booked seat strings for a specific show from the bookings table."""
+# -------------------------------------------------------------
+# Seat Locking & Availability Helpers
+# -------------------------------------------------------------
+def get_session_id():
+    """Retrieves or initializes a unique session ID for the user."""
+    if "session_uid" not in session:
+        session["session_uid"] = uuid.uuid4().hex
+    return session["session_uid"]
+
+def clean_expired_locks():
+    """Purges locks that have passed their expiration timestamp."""
     try:
-        res = supabase.table("bookings").select("seats").eq("movie", movie_title).eq("show_time", time).execute()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        supabase.table("seat_locks").delete().lt("expires_at", now_iso).execute()
+    except Exception as e:
+        print("clean_expired_locks error:", e)
+
+def get_booked_seats(movie, show_time):
+    """Returns a set of permanently booked seat codes from confirmed bookings."""
+    try:
+        res = supabase.table("bookings")\
+            .select("seats")\
+            .eq("movie", movie)\
+            .eq("show_time", show_time)\
+            .execute()
         booked = set()
-        if res.data:
-            for item in res.data:
-                raw_seats = item.get("seats", "")
-                if raw_seats:
-                    for s in raw_seats.split(","):
-                        booked.add(s.strip())
+        for row in (res.data or []):
+            raw = row.get("seats", "")
+            if isinstance(raw, list):
+                booked.update([str(s).strip() for s in raw])
+            elif isinstance(raw, str):
+                booked.update([s.strip() for s in raw.split(",") if s.strip()])
         return booked
     except Exception as e:
-        print("Error fetching booked seats:", e)
+        print("get_booked_seats error:", e)
         return set()
 
+def get_seat_status_maps(movie, show_time, current_session_id):
+    """
+    Returns:
+      booked_set: permanently booked seats
+      locked_by_others: seats held by other users
+      locked_by_me: seats currently locked by the active user session
+    """
+    clean_expired_locks()
+    booked_set = get_booked_seats(movie, show_time)
+
+    locked_by_others = set()
+    locked_by_me = set()
+
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        res = supabase.table("seat_locks")\
+            .select("seat_code, session_id")\
+            .eq("movie", movie)\
+            .eq("show_time", show_time)\
+            .gt("expires_at", now_iso)\
+            .execute()
+
+        for lock in (res.data or []):
+            code = lock.get("seat_code", "").strip()
+            if code in booked_set:
+                continue
+            if lock.get("session_id") == current_session_id:
+                locked_by_me.add(code)
+            else:
+                locked_by_others.add(code)
+    except Exception as e:
+        print("get_seat_status_maps error:", e)
+
+    return booked_set, locked_by_others, locked_by_me
+
+# -------------------------------------------------------------
+# Customer Routes
+# -------------------------------------------------------------
 @app.route("/")
 def index():
-    all_shows = get_all_shows()
-    
-    # Fast query to count confirmed tickets per show
+    return render_template("index.html", movies=MOVIES, all_shows=get_all_shows())
+
+@app.route("/select-seats/<int:show_id>")
+def select_seats(show_id):
+    shows = get_all_shows()
+    if show_id < 0 or show_id >= len(shows):
+        flash("Selected show does not exist.")
+        return redirect(url_for("index"))
+
+    show = shows[show_id]
+    user_sid = get_session_id()
+    booked, locked_others, locked_me = get_seat_status_maps(show["movie"], show["time"], user_sid)
+
+    # Any seat taken by others is marked unavailable
+    unavailable = booked.union(locked_others)
+
+    return render_template(
+        "seats.html",
+        show=show,
+        show_id=show_id,
+        unavailable_seats=list(unavailable),
+        my_locked_seats=list(locked_me),
+        hold_minutes=HOLD_MINUTES
+    )
+
+@app.route("/api/lock-seats", methods=["POST"])
+def api_lock_seats():
+    """AJAX endpoint: Holds seats for HOLD_MINUTES while user completes snacks & payment."""
+    data = request.get_json() or {}
+    show_id = data.get("show_id")
+    seats = data.get("seats", [])
+
+    if not isinstance(seats, list) or not seats:
+        return jsonify({"success": False, "message": "No seats selected."}), 400
+
+    shows = get_all_shows()
+    if show_id is None or show_id < 0 or show_id >= len(shows):
+        return jsonify({"success": False, "message": "Invalid show ID."}), 400
+
+    show = shows[show_id]
+    movie = show["movie"]
+    show_time = show["time"]
+    user_sid = get_session_id()
+
+    booked, locked_others, _ = get_seat_status_maps(movie, show_time, user_sid)
+    conflict = [s for s in seats if s in booked or s in locked_others]
+
+    if conflict:
+        return jsonify({
+            "success": False,
+            "message": f"Seat(s) {', '.join(conflict)} have just been taken by another guest. Please pick other seats."
+        }), 409
+
+    # Set new expiry
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=HOLD_MINUTES)
+    expires_iso = expires_at.isoformat()
+
     try:
-        res = supabase.table("bookings").select("movie, show_time, seats").execute()
-        booked_counts = {}
-        for b in (res.data or []):
-            key = f"{b.get('movie')}|{b.get('show_time')}"
-            seats_in_booking = len(b.get("seats", "").split(",")) if b.get("seats") else 0
-            booked_counts[key] = booked_counts.get(key, 0) + seats_in_booking
+        # Clear any prior lock held by this session for this specific show
+        supabase.table("seat_locks").delete()\
+            .eq("movie", movie)\
+            .eq("show_time", show_time)\
+            .eq("session_id", user_sid)\
+            .execute()
+
+        # Insert new temporary holds
+        rows = [
+            {
+                "movie": movie,
+                "show_time": show_time,
+                "seat_code": s.strip(),
+                "session_id": user_sid,
+                "expires_at": expires_iso
+            }
+            for s in seats
+        ]
+        supabase.table("seat_locks").insert(rows).execute()
+
+        # Store in session for the order flow
+        session["active_hold"] = {
+            "movie": movie,
+            "show_time": show_time,
+            "seats": seats,
+            "price_per_seat": show["price"],
+            "expires_at": expires_iso
+        }
+
+        return jsonify({"success": True, "expires_at": expires_iso, "minutes": HOLD_MINUTES})
     except Exception as e:
-        print("Booking count query failed:", e)
-        booked_counts = {}
+        print("Failed to acquire lock:", e)
+        return jsonify({"success": False, "message": "Could not lock seats. Please try again."}), 500
 
-    grouped_movies = []
-    for movie in MOVIES:
-        movie_shows = []
-        for s in all_shows:
-            if s["movie_id"] == movie["id"]:
-                key = f"{s['movie']}|{s['time']}"
-                taken = booked_counts.get(key, 0)
-                available = max(0, TOTAL_SEATS_PER_SHOW - taken)
-                movie_shows.append({
-                    "show_id": s["show_id"],
-                    "time": s["time"],
-                    "available": available
-                })
-        
-        grouped_movies.append({
-            "id": movie["id"],
-            "title": movie["title"],
-            "screen": movie["screen"],
-            "price": movie["price"],
-            "poster_url": movie["poster_url"],
-            "trailer_url": movie["trailer_url"],
-            "shows": movie_shows
-        })
-
-    return render_template("index.html", movies=grouped_movies)
-
-@app.route("/seats/<int:show_id>")
-def seats(show_id):
-    all_shows = get_all_shows()
-    if show_id < 0 or show_id >= len(all_shows):
-        flash("Invalid show selected.")
+@app.route("/food-and-snacks", methods=["GET", "POST"])
+def food_and_snacks():
+    active_hold = session.get("active_hold")
+    if not active_hold:
+        flash("Your seat selection timed out. Please choose your seats again.")
         return redirect(url_for("index"))
 
-    show_info = all_shows[show_id]
-    booked_set = get_booked_seats(show_info["movie"], show_info["time"])
+    return render_template("food.html", active_hold=active_hold)
 
-    # MUST HAVE ALL 15 ROW LETTERS (A through O)
-    row_chars = "ABCDEFGHIJKLMNO"
-    seats_data = []
-    for r in range(ROWS):
-        row_list = []
-        for c in range(COLS):
-            seat_code = f"{row_chars[r]}{c+1}"
-            row_list.append(seat_code in booked_set)
-        seats_data.append(row_list)
+@app.route("/confirm-booking", methods=["POST"])
+def confirm_booking():
+    user_sid = get_session_id()
+    active_hold = session.get("active_hold")
 
-    show = {
-        "movie": show_info["movie"],
-        "screen": show_info["screen"],
-        "time": show_info["time"],
-        "price": show_info["price"],
-        "poster_url": show_info["poster_url"],
-        "seats": seats_data
+    customer_name = request.form.get("name", "Guest").strip()
+    customer_phone = request.form.get("phone", "").strip()
+    movie = request.form.get("movie") or (active_hold.get("movie") if active_hold else "")
+    show_time = request.form.get("show_time") or (active_hold.get("show_time") if active_hold else "")
+    seats_raw = request.form.get("seats", "")
+    ticket_total = float(request.form.get("ticket_total", 0.0))
+    food_total = float(request.form.get("food_total", 0.0))
+    total_price = ticket_total + food_total
+
+    selected_seats = [s.strip() for s in seats_raw.split(",") if s.strip()]
+
+    # Validate that seats are not permanently booked by someone else
+    booked = get_booked_seats(movie, show_time)
+    if any(s in booked for s in selected_seats):
+        flash("One or more of your chosen seats was already confirmed by someone else.")
+        return redirect(url_for("index"))
+
+    # Generate Unique Ticket ID
+    ticket_id = f"TJP-{uuid.uuid4().hex[:8].upper()}"
+
+    booking_payload = {
+        "ticket_id": ticket_id,
+        "name": customer_name,
+        "phone": customer_phone,
+        "movie": movie,
+        "show_time": show_time,
+        "seats": ",".join(selected_seats),
+        "ticket_total": ticket_total,
+        "food_total": food_total,
+        "total_price": total_price,
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
-    return render_template("seats.html", show=show, show_id=show_id, rows=ROWS, cols=COLS)
-
-@app.route("/book", methods=["POST"])
-def book():
-    show_id = int(request.form.get("show_id"))
-    name = request.form.get("name", "").strip()
-    email = request.form.get("email", "").strip()
-    age = request.form.get("age", "0")
-    selected_seats = request.form.getlist("seats")
-
-    all_shows = get_all_shows()
-    if show_id < 0 or show_id >= len(all_shows):
-        flash("Invalid show")
-        return redirect(url_for("index"))
-
-    show_info = all_shows[show_id]
-
-    if not name or not email or not selected_seats:
-        flash("Please enter name, email, and choose your seats.")
-        return redirect(url_for("seats", show_id=show_id))
 
     try:
-        age = int(age)
-        if age < 1 or age > 120:
-            raise ValueError
-    except:
-        flash("Invalid age provided.")
-        return redirect(url_for("seats", show_id=show_id))
+        supabase.table("bookings").insert(booking_payload).execute()
 
-    # Double booking protection check
-    already_booked = get_booked_seats(show_info["movie"], show_info["time"])
-    for seat in selected_seats:
-        if seat in already_booked:
-            flash(f"Seat {seat} was just booked by another customer! Please pick another.")
-            return redirect(url_for("seats", show_id=show_id))
+        # Remove the temporary hold now that booking is confirmed
+        supabase.table("seat_locks").delete()\
+            .eq("movie", movie)\
+            .eq("show_time", show_time)\
+            .eq("session_id", user_sid)\
+            .execute()
 
-    ticket_total = len(selected_seats) * show_info["price"]
-
-    session["booking"] = {
-        "name": name,
-        "email": email,
-        "age": age,
-        "seats": selected_seats,
-        "ticket_total": ticket_total,
-        "movie": show_info["movie"],
-        "screen": show_info["screen"],
-        "show_time": show_info["time"],
-        "poster_url": show_info["poster_url"]
-    }
-
-    return redirect(url_for("food"))
-
-@app.route("/food", methods=["GET", "POST"])
-def food():
-    if "booking" not in session:
+        session.pop("active_hold", None)
+        return render_template("confirmation.html", booking=booking_payload)
+    except Exception as e:
+        print("Booking confirmation failure:", e)
+        flash("There was an issue finalizing your ticket. Please contact support.")
         return redirect(url_for("index"))
 
-    menu = {
-        1: ("Popcorn (Regular)", 150),
-        2: ("Popcorn (Large Tub)", 250),
-        3: ("Soft Drink (500ml)", 120),
-        4: ("Nachos with Warm Cheese", 200),
-        5: ("Combo (Large Popcorn + 2 Drinks)", 350),
-        6: ("Bottled Mineral Water", 50)
-    }
+# -------------------------------------------------------------
+# Ticket Scanner Gate Route
+# -------------------------------------------------------------
+@app.route("/scan", methods=["GET", "POST"])
+def scan_ticket():
+    ticket_data = None
+    searched_id = ""
 
     if request.method == "POST":
-        foods = []
-        food_total = 0.0
+        searched_id = request.form.get("ticket_id", "").strip().upper()
+        if searched_id:
+            try:
+                res = supabase.table("bookings").select("*").eq("ticket_id", searched_id).execute()
+                if res.data and len(res.data) > 0:
+                    ticket_data = res.data[0]
+                else:
+                    flash(f"No ticket found with ID: {searched_id}")
+            except Exception as e:
+                flash(f"Error querying ticket: {e}")
 
-        for key in menu:
-            qty = int(request.form.get(f"qty_{key}", 0) or 0)
-            if qty > 0:
-                fname, price = menu[key]
-                foods.append({"name": fname, "quantity": qty, "price": price})
-                food_total += price * qty
+    return render_template("scan.html", ticket=ticket_data, searched_id=searched_id)
 
-        data = session["booking"]
-
-        result = supabase.table("bookings").select("id").order("id", desc=True).limit(1).execute()
-        next_num = 1001
-        if result.data:
-            next_num = 1000 + result.data[0]["id"] + 1
-
-        ticket_id = f"TJP{next_num}"
-        seats_str = ", ".join(data["seats"])
-        total_price = data["ticket_total"] + food_total
-
-        # Save to database
-        supabase.table("bookings").insert({
-            "ticket_id": ticket_id,
-            "name": data["name"],
-            "age": data["age"],
-            "movie": data["movie"],
-            "show_time": data["show_time"],
-            "seats": seats_str,
-            "ticket_total": data["ticket_total"],
-            "food_total": food_total,
-            "total_price": total_price,
-            "foods": json.dumps(foods)
-        }).execute()
-
-        # Send Brevo email with the poster image embedded
-        try:
-            email_html = f"""
-            <div style="font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; max-width: 600px; margin: auto; background:#11121d; color:#ffffff; border-radius:16px; overflow:hidden; border: 1px solid #333;">
-                
-                <!-- Email Banner with Poster Thumbnail -->
-                <div style="background: linear-gradient(135deg, #1f1b3c, #0a081a); padding: 24px; text-align: center; border-bottom: 2px solid #ffcc00;">
-                    <img src="{data.get('poster_url', '')}" alt="{data['movie']}" 
-                         style="width: 140px; height: 190px; object-fit: cover; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); margin-bottom: 14px; border: 2px solid #ffcc00;">
-                    <h1 style="color: #ffcc00; margin: 0; font-size: 24px; letter-spacing: 1px;">{data['movie']}</h1>
-                    <p style="color: #a0a0b2; margin: 6px 0 0; font-size: 14px;">{data.get('screen', 'Screen 1')} &bull; {data['show_time']}</p>
-                </div>
-
-                <div style="padding: 24px;">
-                    <p style="font-size: 16px; margin-top: 0;">Hi <strong>{data['name']}</strong>,</p>
-                    <p style="color: #cccccc; font-size: 14px; line-height: 1.5;">Your seats are confirmed! Present this ticket or scan the QR pass below at the gate scanner.</p>
-                    
-                    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; color: #ddd;">
-                        <tr><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; color:#888;">Ticket Pass ID</td><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; text-align:right; color:#ffcc00; font-weight:bold; font-size:16px;">{ticket_id}</td></tr>
-                        <tr><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; color:#888;">Allocated Seats</td><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; text-align:right; color:#2ecc71; font-weight:bold;">{seats_str}</td></tr>
-                        <tr><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; color:#888;">Ticket Total</td><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; text-align:right;">Rs. {data['ticket_total']}</td></tr>
-                        <tr><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; color:#888;">Food & Snacks</td><td style="padding: 10px 0; border-bottom: 1px solid #2a2a3a; text-align:right;">Rs. {food_total}</td></tr>
-                        <tr><td style="padding: 12px 0 0; font-size:16px; font-weight:bold; color:#fff;">Total Paid</td><td style="padding: 12px 0 0; text-align:right; font-size:18px; font-weight:bold; color:#ffcc00;">Rs. {total_price}</td></tr>
-                    </table>
-
-                    <div style="text-align: center; margin: 25px 0; padding: 20px; background: rgba(255,255,255,0.04); border-radius: 12px;">
-                        <p style="margin: 0 0 12px; font-size: 13px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Entrance Turnstile QR Pass</p>
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={ticket_id}" 
-                             alt="QR Code" width="180" height="180" style="border: 8px solid #ffffff; border-radius: 12px; background: #ffffff;">
-                    </div>
-
-                    <p style="text-align:center; color:#777; font-size:12px; margin-bottom:0;">TJP Cinema &bull; Premium Cinematic Experience</p>
-                </div>
-            </div>
-            """
-
-            payload = {
-                "sender": {"name": "TJP Cinema", "email": BREVO_SENDER_EMAIL},
-                "to": [{"email": data["email"], "name": data["name"]}],
-                "subject": f"🎟️ Ticket Confirmed: {ticket_id} - {data['movie']}",
-                "htmlContent": email_html
-            }
-
-            headers = {
-                "accept": "application/json",
-                "api-key": BREVO_API_KEY,
-                "content-type": "application/json"
-            }
-
-            requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
-        except Exception as e:
-            print("Email sending failed:", str(e))
-
-        session.pop("booking", None)
-        return redirect(url_for("confirmation", ticket_id=ticket_id))
-
-    return render_template("food.html", menu=menu)
-
-@app.route("/confirmation/<ticket_id>")
-def confirmation(ticket_id):
-    result = supabase.table("bookings").select("*").eq("ticket_id", ticket_id).execute()
-    if not result.data:
-        flash("Ticket not found")
-        return redirect(url_for("index"))
-    
-    b = result.data[0]
-    poster = ""
-    for m in MOVIES:
-        if m["title"] == b.get("movie"):
-            poster = m["poster_url"]
-            break
-
-    return render_template("confirmation.html", b=b, poster_url=poster)
-
+# -------------------------------------------------------------
+# Admin & Automated Reporting Routes
+# -------------------------------------------------------------
 @app.route("/bookings", methods=["GET", "POST"])
 def view_bookings():
-    if session.get("bookings_logged_in"):
-        result = supabase.table("bookings").select("*").order("id", desc=True).execute()
-        return render_template("bookings.html", bookings=result.data)
+    is_authenticated = session.get("admin_logged_in", False)
 
     if request.method == "POST":
-        entered = request.form.get("password", "")
-        if entered == BOOKINGS_PASSWORD:
-            session["bookings_logged_in"] = True
-            return redirect(url_for("view_bookings"))
+        entered_key = request.form.get("password", "").strip()
+        if entered_key in [BOOKINGS_PASSWORD, ADMIN_RESET_PASSWORD]:
+            session["admin_logged_in"] = True
+            is_authenticated = True
         else:
-            flash("Wrong password!")
-            return redirect(url_for("view_bookings"))
+            flash("Incorrect admin password!")
 
-    return render_template("bookings_login.html")
-
-@app.route("/scan", methods=["GET", "POST"])
-def scan():
-    result = None
-    if request.method == "POST":
-        tid = request.form.get("ticket_id", "").strip().upper()
-        res = supabase.table("bookings").select("*").eq("ticket_id", tid).execute()
-        if res.data:
-            result = res.data[0]
-    return render_template("scan.html", result=result)
-
-@app.route("/admin/reset", methods=["GET", "POST"])
-def admin_reset():
-    if request.method == "POST":
-        entered = request.form.get("password", "")
-        if entered != ADMIN_RESET_PASSWORD:
-            flash("Wrong password!")
-            return redirect(url_for("admin_reset"))
-
+    all_bookings = []
+    if is_authenticated:
         try:
-            supabase.table("bookings").delete().neq("id", 0).execute()
-            flash("All bookings have been cleared successfully!")
-            return redirect(url_for("index"))
+            res = supabase.table("bookings").select("*").order("created_at", desc=True).execute()
+            all_bookings = res.data or []
         except Exception as e:
-            flash(f"Error resetting: {str(e)}")
-            return redirect(url_for("admin_reset"))
+            flash(f"Error loading bookings: {e}")
 
-    return render_template("admin_reset.html")
+    return render_template("bookings.html", authenticated=is_authenticated, bookings=all_bookings)
 
 @app.route("/admin/send-report", methods=["POST"])
 def send_daily_report():
-    entered_key = request.form.get("admin_key", "")
+    """Triggered manually from /bookings or automatically via cron-job.org."""
+    entered_key = request.form.get("admin_key", "").strip()
     if entered_key not in [ADMIN_RESET_PASSWORD, BOOKINGS_PASSWORD]:
+        print(f"Unauthorized report attempt with key: {entered_key}")
         flash("Unauthorized key for revenue report!")
         return redirect(url_for("view_bookings"))
 
-    # Resolve and sanitize recipient email
     recipient = (os.environ.get("ADMIN_REPORT_EMAIL") or BREVO_SENDER_EMAIL or "").strip().strip('"').strip("'")
     sender = (BREVO_SENDER_EMAIL or "").strip().strip('"').strip("'")
 
     if not recipient or "@" not in recipient:
-        flash(f"Error: Invalid recipient email '{recipient}'. Please set ADMIN_REPORT_EMAIL in Render Environment.")
+        flash(f"Error: Invalid recipient email '{recipient}'. Check ADMIN_REPORT_EMAIL in Render.")
         return redirect(url_for("view_bookings"))
 
     try:
         res = supabase.table("bookings").select("*").execute()
         all_bookings = res.data or []
-        
+
         total_tickets = len(all_bookings)
-        ticket_rev = sum(b.get("ticket_total", 0.0) for b in all_bookings)
-        food_rev = sum(b.get("food_total", 0.0) for b in all_bookings)
-        grand_total = sum(b.get("total_price", 0.0) for b in all_bookings)
+        ticket_rev = sum(float(b.get("ticket_total") or 0.0) for b in all_bookings)
+        food_rev = sum(float(b.get("food_total") or 0.0) for b in all_bookings)
+        grand_total = sum(float(b.get("total_price") or 0.0) for b in all_bookings)
 
         now_str = datetime.now().strftime("%d %b %Y, %I:%M %p")
 
@@ -452,7 +433,7 @@ def send_daily_report():
         }
 
         print(f"Dispatching report from {sender} to {recipient}...")
-        response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+        response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=25)
         print("Brevo Status Code:", response.status_code)
         print("Brevo Response Body:", response.text)
 
@@ -466,6 +447,9 @@ def send_daily_report():
 
     return redirect(url_for("view_bookings"))
 
+# -------------------------------------------------------------
+# Server Entrypoint
+# -------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)
