@@ -1,57 +1,58 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card" style="text-align: center; max-width: 650px; margin: auto;">
-    <div style="font-size: 45px; margin-bottom: 6px;">🎟️</div>
-    <h2 style="color: var(--success); font-size: 1.8rem; margin-bottom: 4px;">Reservation Confirmed!</h2>
-    <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 0.9rem;">Your official entry pass has been sent to your email.</p>
 
-    <!-- Digital Boarding Pass -->
-    <div style="background: rgba(0,0,0,0.3); border-radius: var(--radius-lg); text-align: left; border: 2px solid var(--primary); overflow:hidden;">
-        
-        <!-- Pass Header with Poster -->
-        <div style="background: rgba(0,0,0,0.5); padding: 20px; display: flex; gap: 18px; align-items: center; border-bottom: 1px dashed var(--card-border);">
-            {% if poster_url %}
-                <img src="{{ poster_url }}" alt="{{ b.movie }}" style="width: 80px; height: 110px; object-fit: cover; border-radius: 8px; border: 1px solid var(--primary);">
-            {% endif %}
-            <div>
-                <span style="font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Verified Entry Pass</span>
-                <h3 style="color: #fff; margin: 4px 0;">{{ b.movie }}</h3>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin:0;">Pass ID: <strong style="color:var(--primary);">{{ b.ticket_id }}</strong></p>
-            </div>
-        </div>
+{% set data = b if b is defined and b else booking %}
 
-        <div style="padding: 24px;">
-            <div style="text-align: center; margin: 10px 0 20px;">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data={{ b.ticket_id }}" 
-                     alt="QR Code" style="border: 8px solid #fff; border-radius: 8px; background: #fff;">
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">Scan at turnstile for admission</p>
-            </div>
-
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-                <tr>
-                    <td style="padding: 6px 0; color: var(--text-muted);">Guest Name</td>
-                    <td style="padding: 6px 0; text-align: right; font-weight: 600;">{{ b.name }} (Age {{ b.age }})</td>
-                </tr>
-                <tr>
-                    <td style="padding: 6px 0; color: var(--text-muted);">Show Timing</td>
-                    <td style="padding: 6px 0; text-align: right; font-weight: 600;">{{ b.show_time }}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 6px 0; color: var(--text-muted);">Reserved Seats</td>
-                    <td style="padding: 6px 0; text-align: right; font-weight: 700; color: var(--primary);">{{ b.seats }}</td>
-                </tr>
-                <tr style="border-top: 1px solid var(--card-border);">
-                    <td style="padding: 10px 0 0; font-size: 1rem; font-weight: 700;">Grand Total</td>
-                    <td style="padding: 10px 0 0; text-align: right; font-size: 1.15rem; font-weight: 800; color: var(--primary);">Rs. {{ b.total_price }}</td>
-                </tr>
-            </table>
-        </div>
+<div class="card" style="max-width: 550px; margin: 30px auto; padding: 0; overflow: hidden; border: 1px solid var(--card-border); background: #111827; box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
+    <!-- Header Banner -->
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; text-align: center; color: #fff;">
+        <div style="font-size: 2.2rem; margin-bottom: 4px;">🎟️</div>
+        <h2 style="margin: 0; font-size: 1.4rem; letter-spacing: 0.5px;">Booking Confirmed!</h2>
+        <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 0.85rem;">Present this digital boarding pass at the gate</p>
     </div>
 
-    <div style="margin-top: 24px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-        <button onclick="window.print()" class="btn btn-outline">🖨️ Print Pass</button>
-        <a href="{{ url_for('index') }}" class="btn">Back to Home</a>
-        <a href="{{ url_for('scan') }}" class="btn btn-outline">Gate Scanner</a>
+    <!-- Ticket Pass Body -->
+    <div style="padding: 24px;">
+        <div style="text-align: center; margin-bottom: 18px;">
+            <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Ticket ID</span>
+            <h3 style="color: var(--primary); font-family: monospace; font-size: 1.4rem; margin-top: 2px;">{{ data.ticket_id }}</h3>
+        </div>
+
+        <div style="border-top: 1px dashed #374151; border-bottom: 1px dashed #374151; padding: 18px 0; margin-bottom: 18px;">
+            <div style="margin-bottom: 14px;">
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Movie Title</span>
+                <h3 style="color: #fff; margin: 2px 0 0 0; font-size: 1.25rem;">{{ data.movie }}</h3>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                <div>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Showtime</span>
+                    <p style="color: #fff; font-weight: 600; margin: 2px 0 0 0;">🕒 {{ data.show_time }}</p>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Reserved Seats</span>
+                    <p style="color: var(--primary); font-weight: 700; margin: 2px 0 0 0;">{{ data.seats }}</p>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between;">
+                <div>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Guest Name</span>
+                    <p style="color: #fff; margin: 2px 0 0 0;">{{ data.name }}</p>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Total Paid</span>
+                    <p style="color: #22c55e; font-weight: 700; margin: 2px 0 0 0;">Rs. {{ "%.2f"|format(data.total_price) }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 10px;">
+            <button onclick="window.print()" class="btn btn-outline" style="flex: 1; padding: 10px;">🖨️ Print Pass</button>
+            <a href="{{ url_for('index') }}" class="btn" style="flex: 1; padding: 10px; text-align: center;">Book Another</a>
+        </div>
     </div>
 </div>
+
 {% endblock %}
