@@ -406,6 +406,72 @@ def food_and_snacks():
         food_items=FOOD_MENU
     )
     
+def send_customer_ticket_email(to_email, customer_name, booking_data):
+    """Sends immediate cinema pass confirmation to the customer via Brevo."""
+    if not BREVO_API_KEY or not BREVO_SENDER_EMAIL or not to_email or "@" not in to_email:
+        print("Skipping Brevo customer email: Missing API key or invalid recipient.")
+        return False
+
+    ticket_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #0f172a; color: #f8fafc;">
+        <div style="text-align: center; border-bottom: 2px dashed #334155; padding-bottom: 16px; margin-bottom: 20px;">
+            <h1 style="color: #ffcc00; margin: 0; font-size: 1.6rem; letter-spacing: 1px;">🎬 TJP CINEMA</h1>
+            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Official Digital Boarding Pass</p>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <p style="margin: 0; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Ticket ID</p>
+            <h2 style="margin: 2px 0 0 0; color: #ffcc00; font-family: monospace;">{booking_data['ticket_id']}</h2>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+            <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;">Movie</p>
+            <h3 style="margin: 2px 0 0 0; color: #ffffff;">{booking_data['movie']}</h3>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 14px;">
+            <div>
+                <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;">Showtime</p>
+                <p style="margin: 2px 0 0 0; font-weight: bold; color: #ffffff;">{booking_data['show_time']}</p>
+            </div>
+            <div>
+                <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;">Seats</p>
+                <p style="margin: 2px 0 0 0; font-weight: bold; color: #ffcc00;">{booking_data['seats']}</p>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid #334155; padding-top: 14px; margin-top: 14px;">
+            <p style="margin: 0 0 4px 0; color: #94a3b8; font-size: 0.85rem;">Guest: <strong style="color: #ffffff;">{customer_name}</strong></p>
+            <p style="margin: 0; color: #22c55e; font-size: 1.1rem; font-weight: bold;">Total Paid: Rs. {booking_data['total_price']:,.2f}</p>
+        </div>
+
+        <p style="margin-top: 24px; font-size: 0.75rem; color: #64748b; text-align: center;">
+            Please present this QR / Ticket ID at the cinema entrance. Enjoy your screening!
+        </p>
+    </div>
+    """
+
+    payload = {
+        "sender": {"name": "TJP Cinema Box Office", "email": BREVO_SENDER_EMAIL},
+        "to": [{"email": to_email, "name": customer_name}],
+        "subject": f"🎟️ Your Movie Pass — {booking_data['movie']} ({booking_data['ticket_id']})",
+        "htmlContent": ticket_html
+    }
+
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+
+    try:
+        res = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=15)
+        print("Brevo Customer Ticket Status:", res.status_code, res.text)
+        return res.status_code in [200, 201, 202]
+    except Exception as e:
+        print("Brevo Ticket Email Error (non-fatal):", e)
+        return False
+        
 @app.route("/confirm-booking", methods=["POST"])
 def confirm_booking():
     user_sid = get_session_id()
@@ -415,17 +481,16 @@ def confirm_booking():
         flash("Your seat selection has expired. Please choose your seats again.")
         return redirect(url_for("index"))
 
-    # Extract reservation metadata from session
     movie = active_hold.get("movie")
     show_time = active_hold.get("show_time")
     selected_seats = active_hold.get("seats", [])
     ticket_total = float(active_hold.get("ticket_total", 0.0))
 
-    # Capture customer inputs sent from the food & concessions form
+    # Pull user details directly from the food/concessions form
     customer_name = request.form.get("name", "").strip() or active_hold.get("guest_name", "Guest")
     customer_email = request.form.get("email", "").strip() or active_hold.get("guest_email", "")
     customer_age = request.form.get("age", "").strip() or active_hold.get("guest_age", "")
-    
+
     try:
         food_total = float(request.form.get("food_total", 0.0))
     except (ValueError, TypeError):
@@ -433,7 +498,7 @@ def confirm_booking():
 
     total_price = ticket_total + food_total
 
-    # Final collision check against already confirmed bookings
+    # Final conflict check against already-confirmed bookings
     booked = get_booked_seats(movie, show_time)
     if any(s in booked for s in selected_seats):
         flash("One or more of your selected seats was already reserved by another customer.")
@@ -444,7 +509,7 @@ def confirm_booking():
     booking_payload = {
         "ticket_id": ticket_id,
         "name": customer_name,
-        "phone": customer_email,   # Populates contact info in Supabase
+        "phone": customer_email,   # Saved into contact column
         "email": customer_email,
         "movie": movie,
         "show_time": show_time,
@@ -455,13 +520,12 @@ def confirm_booking():
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
-    # Insert into Supabase bookings table
+    # 1. Save to Supabase
     try:
         supabase.table("bookings").insert(booking_payload).execute()
     except Exception as e:
         print("Primary Supabase insert failed:", repr(e))
         try:
-            # Fallback insert omitting non-standard schema columns
             fallback_payload = {
                 "ticket_id": ticket_id,
                 "name": customer_name,
@@ -477,7 +541,7 @@ def confirm_booking():
             flash(f"Database error finalizing ticket: {str(e2)}")
             return redirect(url_for("index"))
 
-    # Remove temporary hold from seat_locks
+    # 2. Release temporary locks
     try:
         supabase.table("seat_locks").delete()\
             .eq("movie", movie)\
@@ -485,12 +549,17 @@ def confirm_booking():
             .eq("session_id", user_sid)\
             .execute()
     except Exception as lock_err:
-        print("Non-fatal seat lock cleanup warning:", lock_err)
+        print("Seat lock cleanup warning:", lock_err)
 
-    # Invalidate the active hold session
+    # 3. Fire customer ticket pass via Brevo
+    if customer_email:
+        email_sent = send_customer_ticket_email(customer_email, customer_name, booking_payload)
+        if email_sent:
+            flash(f"Digital pass dispatched to {customer_email}!")
+
+    # 4. Clear active session hold
     session.pop("active_hold", None)
 
-    # Pass both 'booking' and 'b' so confirmation.html works with either variable name
     return render_template(
         "confirmation.html",
         booking=booking_payload,
