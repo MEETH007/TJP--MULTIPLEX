@@ -415,22 +415,37 @@ def confirm_booking():
         flash("Your seat selection has expired. Please choose your seats again.")
         return redirect(url_for("index"))
 
+    # Extract reservation metadata from session
     movie = active_hold.get("movie")
     show_time = active_hold.get("show_time")
     selected_seats = active_hold.get("seats", [])
     ticket_total = float(active_hold.get("ticket_total", 0.0))
-    guest_name = active_hold.get("guest_name", "Guest")
-    guest_email = active_hold.get("guest_email", "")
 
-    food_total = float(request.form.get("food_total", 0.0))
+    # Capture customer inputs sent from the food & concessions form
+    customer_name = request.form.get("name", "").strip() or active_hold.get("guest_name", "Guest")
+    customer_email = request.form.get("email", "").strip() or active_hold.get("guest_email", "")
+    customer_age = request.form.get("age", "").strip() or active_hold.get("guest_age", "")
+    
+    try:
+        food_total = float(request.form.get("food_total", 0.0))
+    except (ValueError, TypeError):
+        food_total = 0.0
+
     total_price = ticket_total + food_total
+
+    # Final collision check against already confirmed bookings
+    booked = get_booked_seats(movie, show_time)
+    if any(s in booked for s in selected_seats):
+        flash("One or more of your selected seats was already reserved by another customer.")
+        return redirect(url_for("index"))
 
     ticket_id = f"TJP-{uuid.uuid4().hex[:8].upper()}"
 
     booking_payload = {
         "ticket_id": ticket_id,
-        "name": guest_name,
-        "phone": guest_email,
+        "name": customer_name,
+        "phone": customer_email,   # Populates contact info in Supabase
+        "email": customer_email,
         "movie": movie,
         "show_time": show_time,
         "seats": ",".join(selected_seats),
@@ -440,16 +455,17 @@ def confirm_booking():
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
+    # Insert into Supabase bookings table
     try:
-        # Primary insert
         supabase.table("bookings").insert(booking_payload).execute()
     except Exception as e:
-        print("Detailed Supabase Insert Error:", repr(e))
-        # Fallback insert omitting granular subtotal columns in case table uses standard fields
+        print("Primary Supabase insert failed:", repr(e))
         try:
+            # Fallback insert omitting non-standard schema columns
             fallback_payload = {
                 "ticket_id": ticket_id,
-                "name": guest_name,
+                "name": customer_name,
+                "phone": customer_email,
                 "movie": movie,
                 "show_time": show_time,
                 "seats": ",".join(selected_seats),
@@ -457,11 +473,11 @@ def confirm_booking():
             }
             supabase.table("bookings").insert(fallback_payload).execute()
         except Exception as e2:
-            print("Fallback Supabase Insert Failed:", repr(e2))
+            print("Fallback Supabase insert failed:", repr(e2))
             flash(f"Database error finalizing ticket: {str(e2)}")
             return redirect(url_for("index"))
 
-    # Cleanup temporary locks
+    # Remove temporary hold from seat_locks
     try:
         supabase.table("seat_locks").delete()\
             .eq("movie", movie)\
@@ -469,12 +485,15 @@ def confirm_booking():
             .eq("session_id", user_sid)\
             .execute()
     except Exception as lock_err:
-        print("Lock cleanup error (non-fatal):", lock_err)
+        print("Non-fatal seat lock cleanup warning:", lock_err)
 
+    # Invalidate the active hold session
     session.pop("active_hold", None)
+
+    # Pass both 'booking' and 'b' so confirmation.html works with either variable name
     return render_template(
-        "confirmation.html", 
-        booking=booking_payload, 
+        "confirmation.html",
+        booking=booking_payload,
         b=booking_payload
     )
 
