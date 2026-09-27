@@ -1,159 +1,267 @@
-{% extends "base.html" %}
-{% block content %}
-<style>
-    /* Clean, high-contrast BookMyShow style showtime buttons */
-    .time-chip {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none !important;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 204, 0, 0.4);
-        border-radius: 10px;
-        padding: 10px 6px;
-        transition: all 0.2s ease-in-out;
-    }
-    /* Enforce pure white text so visited links never turn purple */
-    .time-chip .time-text,
-    .time-chip:visited .time-text {
-        color: #ffffff !important;
-        font-weight: 700;
-        font-size: 0.95rem;
-        letter-spacing: 0.5px;
-        margin-bottom: 2px;
-    }
-    .time-chip .seats-avail {
-        color: #00ff88 !important;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .time-chip:hover {
-        background: #ffcc00 !important;
-        border-color: #ffcc00 !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 14px rgba(255, 204, 0, 0.35);
-    }
-    .time-chip:hover .time-text {
-        color: #000000 !important;
-    }
-    .time-chip:hover .seats-avail {
-        color: #004d26 !important;
-    }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TJP Cinema — Premium Movie Experience</title>
+    <style>
+        :root {
+            --primary: #d97706;
+            --primary-hover: #b45309;
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #22c55e;
+        }
 
-    .time-chip-soldout {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #333;
-        border-radius: 10px;
-        padding: 10px 6px;
-        background: rgba(0, 0, 0, 0.3);
-        opacity: 0.45;
-        cursor: not-allowed;
-    }
-</style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+        }
 
-<div class="card">
-    <h2 style="text-align:center; color: var(--primary); margin-bottom: 25px;">Now Showing in Theatres</h2>
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
-        {% for movie in movies %}
-        <div style="background: rgba(0,0,0,0.3); border-radius: var(--radius-lg); border: 1px solid var(--card-border); overflow: hidden; display: flex; flex-direction: column;">
-            
-            <!-- Movie Poster + Screen Badge -->
-            <div style="position: relative; height: 320px; overflow: hidden; background: #000;">
-                <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" 
-                     style="width: 100%; height: 100%; object-fit: cover; display: block;"
-                     loading="lazy"
-                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1574267432553-4b4628081c31?w=600&auto=format&fit=crop&q=80';">
-                <span style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.85); color: var(--primary); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(4px); border: 1px solid rgba(255,204,0,0.3);">
-                    {{ movie.screen }}
-                </span>
-            </div>
+        header {
+            background: #111827;
+            padding: 18px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #374151;
+        }
 
-            <!-- Details -->
-            <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <h3 style="color: var(--primary); font-size: 1.15rem; margin-bottom: 6px;">{{ movie.title }}</h3>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">Tickets from <strong>Rs. {{ movie.price }}</strong></p>
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            letter-spacing: 1px;
+        }
 
-                    <!-- Watch Trailer Button -->
-                    <button type="button" class="btn btn-outline" onclick="openTrailer('{{ movie.trailer_url }}', '{{ movie.title }}')" 
-                            style="width: 100%; margin-bottom: 16px; padding: 8px; font-size: 0.85rem;">
-                        🎬 Watch Trailer
-                    </button>
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            margin-left: 20px;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
 
-                    <!-- Showtime Selection Grid -->
-                    <p style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">SELECT SHOWTIME:</p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        {% for s in movie.shows %}
-                            {% if s.available > 0 %}
-                                <a href="{{ url_for('seats', show_id=s.show_id) }}" class="time-chip">
-                                    <span class="time-text">{{ s.time }}</span>
-                                    <span class="seats-avail">{{ s.available }} left</span>
-                                </a>
-                            {% else %}
-                                <div class="time-chip-soldout">
-                                    <span style="font-weight: 700; font-size: 0.95rem; color: #888;">{{ s.time }}</span>
-                                    <span style="font-size: 0.75rem; color: var(--danger); font-weight: 600;">Sold Out</span>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
+        .nav-links a:hover {
+            color: var(--text-light);
+        }
+
+        .hero {
+            text-align: center;
+            padding: 40px 20px 20px;
+        }
+
+        .hero h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+
+        .hero p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+            flex: 1;
+        }
+
+        .flash-messages {
+            margin-bottom: 24px;
+        }
+
+        .flash-badge {
+            background: #ef4444;
+            color: #fff;
+            padding: 12px 18px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 28px;
+        }
+
+        .movie-card {
+            background: var(--card-bg);
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #334155;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .movie-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+        }
+
+        .poster-wrapper {
+            position: relative;
+            width: 100%;
+            height: 380px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .poster-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .movie-details {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .movie-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .screen-info {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-bottom: 14px;
+        }
+
+        .price-badge {
+            display: inline-block;
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .showtimes-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .showtime-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .time-chip {
+            background: #0f172a;
+            color: var(--text-light);
+            border: 1px solid #475569;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .time-chip:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        footer {
+            background: #111827;
+            padding: 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid #374151;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="{{ url_for('index') }}" class="brand">🎬 TJP CINEMA</a>
+        <div class="nav-links">
+            <a href="{{ url_for('scan_ticket') }}">Door Gate / Scan</a>
+            <a href="{{ url_for('view_bookings') }}">Admin & Reports</a>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>Now Showing & Pre-Bookings</h1>
+        <p>Select a showtime below to reserve your seats</p>
+    </section>
+
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for msg in messages %}
+                        <div class="flash-badge">{{ msg }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="movie-grid">
+            {% for movie in movies %}
+                <div class="movie-card">
+                    <div class="poster-wrapper">
+                        <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" class="poster-img" onerror="this.src='https://via.placeholder.com/350x500?text=No+Poster'">
+                    </div>
+                    <div class="movie-details">
+                        <div>
+                            <h2 class="movie-title">{{ movie.title }}</h2>
+                            <p class="screen-info">{{ movie.screen }}</p>
+                            <span class="price-badge">Rs. {{ "%.2f"|format(movie.price) }} / ticket</span>
+                        </div>
+
+                        <div>
+                            <span class="showtimes-label">Available Showtimes:</span>
+                            <div class="showtime-buttons">
+                                {% for time in movie.times %}
+                                    {# Map movie index and time safely to select_seats #}
+                                    <a href="{{ url_for('select_seats') }}?movie_id={{ movie.id }}&time={{ time }}" class="time-chip">
+                                        {{ time }}
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-<!-- Modal Popup for YouTube Trailer -->
-<div id="trailerModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.88); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px;">
-    <div style="background: #12131c; width: 100%; max-width: 760px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.15); overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.7);">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);">
-            <h4 id="trailerTitle" style="color: var(--primary); margin: 0; font-size: 1rem;">Movie Trailer</h4>
-            <div style="display: flex; align-items: center; gap: 14px;">
-                <a id="externalTrailerLink" href="#" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); font-size: 0.8rem; text-decoration: underline;">Open in YouTube ↗</a>
-                <button type="button" onclick="closeTrailer()" style="background: transparent; border: none; color: #fff; font-size: 22px; cursor: pointer; line-height: 1;">✕</button>
-            </div>
-        </div>
-
-        <div style="position: relative; padding-bottom: 56.25%; height: 0;">
-            <iframe id="trailerFrame" 
-                    src="" 
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                    allowfullscreen>
-            </iframe>
+            {% endfor %}
         </div>
     </div>
-</div>
 
-<script>
-    function openTrailer(url, title) {
-        document.getElementById('trailerTitle').textContent = title + " — Official Trailer";
-        document.getElementById('trailerFrame').src = url + "?autoplay=1&enablejsapi=1";
-        
-        const ytWatchUrl = url.replace('embed/', 'watch?v=').replace('-nocookie', '');
-        document.getElementById('externalTrailerLink').href = ytWatchUrl;
+    <footer>
+        <p>&copy; 2026 TJP Cinema Multiplex. All rights reserved.</p>
+    </footer>
 
-        const modal = document.getElementById('trailerModal');
-        modal.style.display = 'flex';
-    }
-
-    function closeTrailer() {
-        const modal = document.getElementById('trailerModal');
-        document.getElementById('trailerFrame').src = "";
-        modal.style.display = 'none';
-    }
-
-    document.getElementById('trailerModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeTrailer();
-        }
-    });
-</script>
-{% endblock %}
+</body>
+</html>
