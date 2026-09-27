@@ -177,35 +177,53 @@ def index():
 @app.route("/select-seats/<int:show_id>")
 def select_seats(show_id):
     shows = get_all_shows()
+    
+    # 1. Parse show selection from route param or query parameters
+    req_movie_id = request.args.get("movie_id", type=int)
+    req_time = request.args.get("time", "").strip()
 
-    # Fallbacks if index.html passes query strings (e.g. ?movie_id=0 or ?id=0 or ?show_id=0)
-    if show_id is None:
-        if request.args.get("show_id") is not None:
-            show_id = request.args.get("show_id", type=int)
-        elif request.args.get("movie_id") is not None:
-            mid = request.args.get("movie_id", type=int)
-            # Find first show matching that movie id
-            show_id = next((i for i, s in enumerate(shows) if s["movie_id"] == mid), 0)
-        elif request.args.get("id") is not None:
-            mid = request.args.get("id", type=int)
-            show_id = next((i for i, s in enumerate(shows) if s["movie_id"] == mid), 0)
-        else:
-            show_id = 0
+    chosen_show = None
+    chosen_idx = 0
 
-    if show_id < 0 or show_id >= len(shows):
-        show_id = 0
+    if show_id is not None and 0 <= show_id < len(shows):
+        chosen_show = shows[show_id]
+        chosen_idx = show_id
+    elif req_movie_id is not None:
+        # Match movie ID and time if provided
+        for i, s in enumerate(shows):
+            if s["movie_id"] == req_movie_id:
+                if not req_time or s["time"] == req_time:
+                    chosen_show = s
+                    chosen_idx = i
+                    break
 
-    show = shows[show_id]
+    if not chosen_show:
+        chosen_show = shows[0]
+        chosen_idx = 0
+
+    # 2. Extract movie information
+    movie_title = chosen_show["movie"]
+    show_time = chosen_show["time"]
+    price = chosen_show.get("price", 250.0)
+    screen = chosen_show.get("screen", "Screen 1")
+    poster_url = chosen_show.get("poster_url", "")
+
+    # 3. Retrieve locked and booked seats
     user_sid = get_session_id()
-    booked, locked_others, locked_me = get_seat_status_maps(show["movie"], show["time"], user_sid)
-
+    booked, locked_others, locked_me = get_seat_status_maps(movie_title, show_time, user_sid)
     unavailable = booked.union(locked_others)
 
+    # 4. Render template with both modern and legacy variable aliases
     return render_template(
         "seats.html",
-        show=show,
-        show_id=show_id,
-        movie=show,
+        show=chosen_show,
+        show_id=chosen_idx,
+        movie=chosen_show,
+        movie_title=movie_title,
+        show_time=show_time,
+        price=price,
+        screen=screen,
+        poster_url=poster_url,
         unavailable_seats=list(unavailable),
         my_locked_seats=list(locked_me),
         hold_minutes=HOLD_MINUTES
