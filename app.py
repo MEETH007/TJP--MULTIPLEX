@@ -407,70 +407,171 @@ def food_and_snacks():
     )
     
 def send_customer_ticket_email(to_email, customer_name, booking_data):
-    """Sends cinema boarding pass with scannable QR code via Brevo."""
+    """Sends a luxury cinema boarding pass with notch stubs, poster card, and scannable pass."""
     if not BREVO_API_KEY or not BREVO_SENDER_EMAIL or not to_email or "@" not in to_email:
         print("Skipping Brevo customer email: Missing API key or invalid recipient.")
         return False
 
-    ticket_id = booking_data["ticket_id"]
-    qr_url = f"https://quickchart.io/qr?text={ticket_id}&size=200&margin=1"
+    ticket_id = booking_data.get("ticket_id", "TJP-PASS")
+    movie_title = booking_data.get("movie", "Cinema Screening")
+    show_time = booking_data.get("show_time", "")
+    raw_seats = booking_data.get("seats", "")
+    ticket_total = float(booking_data.get("ticket_total", 0.0))
+    food_total = float(booking_data.get("food_total", 0.0))
+    grand_total = float(booking_data.get("total_price", ticket_total + food_total))
+
+    # Match poster and screen from catalog
+    poster_url = "https://images.weserv.nl/?url=www.impawards.com/2026/posters/avengers_doomsday_ver4.jpg"
+    screen_info = "Screen 1 • Laser Presentation"
+    for m in MOVIES:
+        if m["title"].strip().lower() == movie_title.strip().lower():
+            poster_url = m.get("poster_url", poster_url)
+            screen_info = m.get("screen", screen_info)
+            break
+
+    # Build stylized seat chips
+    seat_chips = []
+    if isinstance(raw_seats, list):
+        seat_list = raw_seats
+    else:
+        seat_list = [s.strip() for s in str(raw_seats).split(",") if s.strip()]
+
+    for s in seat_list:
+        seat_chips.append(
+            f'<span style="display: inline-block; background: #1e293b; color: #ffcc00; border: 1px solid #ffcc00; font-weight: 700; font-size: 13px; padding: 3px 9px; border-radius: 6px; margin: 2px 3px 2px 0;">{s}</span>'
+        )
+    rendered_seats_html = "".join(seat_chips) or f'<strong style="color: #ffcc00;">{raw_seats}</strong>'
+
+    # High-density Scannable Turnstile QR Code
+    qr_url = f"https://quickchart.io/qr?text={ticket_id}&size=260&margin=1"
 
     ticket_html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; padding: 24px; border: 1px solid #334155; border-radius: 14px; background: #0f172a; color: #f8fafc; text-align: center;">
-        <div style="border-bottom: 2px dashed #334155; padding-bottom: 16px; margin-bottom: 20px;">
-            <h1 style="color: #ffcc00; margin: 0; font-size: 1.6rem; letter-spacing: 1px;">🎬 TJP CINEMA</h1>
-            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Official Digital Boarding Pass</p>
-        </div>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TJP Cinema VIP Ticket</title>
+    </head>
+    <body style="margin: 0; padding: 28px 12px; background-color: #07090e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 540px; margin: auto; background-color: #0f1523; border-radius: 20px; overflow: hidden; border: 1px solid #1e293b; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);">
+            
+            <!-- HEADER BRANDING -->
+            <tr>
+                <td style="padding: 24px 28px 18px 28px; background: linear-gradient(180deg, #161f33 0%, #0f1523 100%);">
+                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td>
+                                <span style="font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #ffcc00; text-transform: uppercase;">PREMIUM PASS</span>
+                                <h1 style="margin: 2px 0 0 0; font-size: 24px; font-weight: 900; color: #ffffff; letter-spacing: 0.5px;">🎬 TJP CINEMA</h1>
+                            </td>
+                            <td align="right">
+                                <span style="display: inline-block; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.4); color: #22c55e; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 50px;">CONFIRMED</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
 
-        <!-- LIVE QR CODE -->
-        <div style="background: #ffffff; padding: 14px; display: inline-block; border-radius: 10px; margin-bottom: 16px;">
-            <img src="{qr_url}" alt="Ticket QR Code" width="160" height="160" style="display: block; margin: auto;">
-        </div>
+            <!-- POSTER HERO WITH FILM INFO -->
+            <tr>
+                <td style="padding: 10px 28px 24px 28px;">
+                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td width="120" valign="top">
+                                <img src="{poster_url}" alt="{movie_title}" width="120" style="display: block; border-radius: 12px; box-shadow: 0 12px 24px rgba(0,0,0,0.6); border: 1px solid #2a3850; object-fit: cover;">
+                            </td>
+                            <td valign="middle" style="padding-left: 20px;">
+                                <span style="background: rgba(255, 204, 0, 0.12); color: #ffcc00; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px;">{screen_info}</span>
+                                <h2 style="color: #ffffff; font-size: 20px; font-weight: 800; margin: 0 0 6px 0; line-height: 1.25;">{movie_title}</h2>
+                                <p style="color: #94a3b8; font-size: 13px; margin: 0 0 4px 0;">🕒 Show: <strong style="color: #ffffff;">{show_time}</strong></p>
+                                <p style="color: #94a3b8; font-size: 13px; margin: 0;">Guest: <strong style="color: #ffffff;">{customer_name}</strong></p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
 
-        <div>
-            <p style="margin: 0; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Ticket ID</p>
-            <h2 style="margin: 2px 0 16px 0; color: #ffcc00; font-family: monospace; font-size: 1.5rem;">{ticket_id}</h2>
-        </div>
+            <!-- STUB PERFORATION CUTOUT -->
+            <tr>
+                <td style="padding: 0; position: relative;">
+                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td width="16" height="32" style="background-color: #07090e; border-top-right-radius: 16px; border-bottom-right-radius: 16px; border-right: 1px solid #1e293b;"></td>
+                            <td style="border-bottom: 2px dashed #243046;"></td>
+                            <td width="16" height="32" style="background-color: #07090e; border-top-left-radius: 16px; border-bottom-left-radius: 16px; border-left: 1px solid #1e293b;"></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
 
-        <div style="text-align: left; background: rgba(255,255,255,0.05); padding: 16px; border-radius: 10px; margin-bottom: 16px;">
-            <div style="margin-bottom: 10px;">
-                <span style="color: #94a3b8; font-size: 0.8rem;">Movie:</span>
-                <strong style="color: #ffffff; display: block; font-size: 1.1rem;">{booking_data['movie']}</strong>
-            </div>
+            <!-- BOOKING SUMMARY MATRIX -->
+            <tr>
+                <td style="padding: 20px 28px 12px 28px;">
+                    <table width="100%" cellpadding="10" cellspacing="0" style="border-collapse: collapse; font-size: 13px;">
+                        <tr style="border-bottom: 1px solid #182234;">
+                            <td style="color: #64748b; font-weight: 600; padding-left: 0;">Ticket Pass Code</td>
+                            <td align="right" style="color: #ffcc00; font-family: monospace; font-size: 15px; font-weight: 800; padding-right: 0;">{ticket_id}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #182234;">
+                            <td style="color: #64748b; font-weight: 600; padding-left: 0;">Allocated Seat(s)</td>
+                            <td align="right" style="padding-right: 0;">
+                                {rendered_seats_html}
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #182234;">
+                            <td style="color: #64748b; font-weight: 600; padding-left: 0;">Box Office Admission</td>
+                            <td align="right" style="color: #cbd5e1; font-weight: 600; padding-right: 0;">Rs. {ticket_total:,.2f}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #182234;">
+                            <td style="color: #64748b; font-weight: 600; padding-left: 0;">Pure Veg Concessions</td>
+                            <td align="right" style="color: #cbd5e1; font-weight: 600; padding-right: 0;">Rs. {food_total:,.2f}</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #ffffff; font-size: 15px; font-weight: 800; padding-left: 0; padding-top: 14px;">Total Amount Paid</td>
+                            <td align="right" style="color: #22c55e; font-size: 19px; font-weight: 900; padding-right: 0; padding-top: 14px;">Rs. {grand_total:,.2f}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
 
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <div>
-                    <span style="color: #94a3b8; font-size: 0.8rem;">Showtime:</span>
-                    <strong style="color: #ffffff; display: block;">🕒 {booking_data['show_time']}</strong>
-                </div>
-                <div style="text-align: right;">
-                    <span style="color: #94a3b8; font-size: 0.8rem;">Seats:</span>
-                    <strong style="color: #ffcc00; display: block; font-size: 1.1rem;">{booking_data['seats']}</strong>
-                </div>
-            </div>
+            <!-- TURNSTILE SCANNER QR STUB -->
+            <tr>
+                <td align="center" style="padding: 12px 28px 28px 28px;">
+                    <div style="background: linear-gradient(180deg, #090d16 0%, #0d121e 100%); border: 1px solid #202b3e; border-radius: 16px; padding: 22px 20px; max-width: 320px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
+                        <span style="color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 14px;">
+                            TURNSTILE ADMISSION PASS
+                        </span>
+                        
+                        <!-- QR Image with white scan buffer -->
+                        <div style="background: #ffffff; padding: 12px; display: inline-block; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); line-height: 0;">
+                            <img src="{qr_url}" alt="Ticket Turnstile QR" width="160" height="160" style="display: block; border: 0;">
+                        </div>
 
-            <div style="display: flex; justify-content: space-between; border-top: 1px solid #334155; padding-top: 10px;">
-                <div>
-                    <span style="color: #94a3b8; font-size: 0.8rem;">Guest:</span>
-                    <strong style="color: #ffffff; display: block;">{customer_name}</strong>
-                </div>
-                <div style="text-align: right;">
-                    <span style="color: #94a3b8; font-size: 0.8rem;">Total Paid:</span>
-                    <strong style="color: #22c55e; display: block; font-size: 1.1rem;">Rs. {booking_data['total_price']:,.2f}</strong>
-                </div>
-            </div>
-        </div>
+                        <p style="color: #475569; font-size: 11px; margin: 12px 0 0 0;">
+                            Scan directly from your screen at Turnstile Gate or Box Office Kiosk
+                        </p>
+                    </div>
+                </td>
+            </tr>
 
-        <p style="margin-top: 18px; font-size: 0.75rem; color: #64748b;">
-            Scan this QR code at the multiplex gate scanner for direct entry. Enjoy your screening!
-        </p>
-    </div>
+            <!-- FOOTER -->
+            <tr>
+                <td align="center" style="padding: 16px 24px 22px 24px; background-color: #0a0e17; border-top: 1px solid #172132;">
+                    <p style="color: #475569; font-size: 11px; margin: 0;">
+                        TJP Cinema Multiplex &bull; Screenings &bull; Pure Veg Dining Experience
+                    </p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
     """
 
     payload = {
         "sender": {"name": "TJP Cinema Box Office", "email": BREVO_SENDER_EMAIL},
         "to": [{"email": to_email, "name": customer_name}],
-        "subject": f"🎟️ Your Ticket Pass [{ticket_id}] — {booking_data['movie']}",
+        "subject": f"🎟️ Pass Confirmed: {movie_title} [{ticket_id}]",
         "htmlContent": ticket_html
     }
 
@@ -482,7 +583,7 @@ def send_customer_ticket_email(to_email, customer_name, booking_data):
 
     try:
         res = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=15)
-        print("Brevo Customer Ticket Status:", res.status_code, res.text)
+        print("Brevo Ticket Email Status:", res.status_code, res.text)
         return res.status_code in [200, 201, 202]
     except Exception as e:
         print("Brevo Ticket Email Error (non-fatal):", e)
