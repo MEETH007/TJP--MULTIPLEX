@@ -710,25 +710,59 @@ def scan_ticket():
 # -------------------------------------------------------------
 @app.route("/bookings", methods=["GET", "POST"])
 def view_bookings():
-    is_authenticated = session.get("admin_logged_in", False)
+    # Correct admin credentials check
+    correct_pass = os.environ.get("ADMIN_PASSWORD", "admin123")
 
     if request.method == "POST":
-        entered_key = request.form.get("password", "").strip()
-        if entered_key in [BOOKINGS_PASSWORD, ADMIN_RESET_PASSWORD]:
-            session["admin_logged_in"] = True
-            is_authenticated = True
-        else:
-            flash("Incorrect admin password!")
+        action = request.form.get("action")
+        # Accept either admin_pass or password field names
+        entered_pass = (request.form.get("admin_pass") or request.form.get("password") or "").strip()
 
+        if action == "authenticate":
+            if entered_pass == correct_pass:
+                session["admin_logged_in"] = True
+                flash("Admin ledger unlocked successfully!")
+            else:
+                session["admin_logged_in"] = False
+                flash("Incorrect admin passcode.")
+
+        elif action == "reset_bookings":
+            if session.get("admin_logged_in") or entered_pass == correct_pass:
+                try:
+                    # Clean out bookings and active locks
+                    supabase.table("bookings").delete().neq("ticket_id", "0").execute()
+                    supabase.table("seat_locks").delete().neq("session_id", "0").execute()
+                    flash("All booking records and seat locks have been reset.")
+                except Exception as e:
+                    print("Error resetting bookings:", e)
+                    flash("Failed to reset bookings in Supabase.")
+            else:
+                flash("Unauthorized: Unlock the ledger first to reset bookings.")
+
+        elif action == "send_report":
+            # Triggers existing revenue briefing email
+            try:
+                send_daily_revenue_report()
+                flash("Daily revenue briefing dispatched to owner email!")
+            except Exception as e:
+                flash(f"Report dispatch error: {e}")
+
+    # Fetch records if authenticated
     all_bookings = []
+    is_authenticated = session.get("admin_logged_in", False)
     if is_authenticated:
         try:
             res = supabase.table("bookings").select("*").order("created_at", desc=True).execute()
             all_bookings = res.data or []
         except Exception as e:
-            flash(f"Error loading bookings: {e}")
+            print("Supabase fetch error:", e)
+            all_bookings = []
 
-    return render_template("bookings.html", authenticated=is_authenticated, bookings=all_bookings)
+    return render_template(
+        "bookings.html",
+        bookings=all_bookings,
+        is_authenticated=is_authenticated
+    )
 
 @app.route("/admin/send-report", methods=["POST"])
 def send_daily_report():
