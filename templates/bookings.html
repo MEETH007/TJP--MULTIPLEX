@@ -20,7 +20,12 @@
             --success: #10b981;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
 
         body {
             background-color: var(--bg-deep);
@@ -31,6 +36,7 @@
             min-height: 100vh;
         }
 
+        /* FLOATING LUXURY NAVBAR */
         .nav-wrapper {
             position: sticky;
             top: 16px;
@@ -43,6 +49,7 @@
         .navbar {
             background: var(--surface-glass);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-glass);
             border-radius: 20px;
             padding: 12px 24px;
@@ -52,8 +59,18 @@
             box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
         }
 
-        .brand-block { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-        .brand-icon { font-size: 1.55rem; filter: drop-shadow(0 0 12px var(--primary-glow)); }
+        .brand-block {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .brand-icon {
+            font-size: 1.55rem;
+            filter: drop-shadow(0 0 12px var(--primary-glow));
+        }
+
         .brand-text {
             font-family: 'Space Grotesk', sans-serif;
             font-size: 1.45rem;
@@ -64,7 +81,12 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .nav-links { display: flex; align-items: center; gap: 10px; }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .nav-pill {
             color: var(--text-muted);
             text-decoration: none;
@@ -75,22 +97,44 @@
             border: 1px solid transparent;
             transition: all 0.25s ease;
         }
+
         .nav-pill:hover {
             color: #fff;
             background: rgba(255, 255, 255, 0.05);
             border-color: rgba(255, 255, 255, 0.1);
         }
+
         .nav-pill.active {
             background: rgba(245, 158, 11, 0.12);
             color: var(--primary);
             border-color: rgba(245, 158, 11, 0.3);
         }
 
-        .container { max-width: 1200px; margin: 0 auto 60px; padding: 0 16px; }
+        /* FLASH MESSAGES */
+        .flash {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--primary);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 12px 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* MAIN CONTAINER */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto 60px;
+            padding: 0 16px;
+        }
 
         .card {
             background: rgba(18, 24, 38, 0.65);
             backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             border: 1px solid var(--border-glass);
             border-radius: 20px;
             padding: 30px;
@@ -115,7 +159,12 @@
             font-weight: 800;
             color: #fff;
         }
-        .admin-title p { color: var(--text-muted); font-size: 0.88rem; margin-top: 4px; }
+
+        .admin-title p {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-top: 4px;
+        }
 
         .auth-form {
             display: flex;
@@ -132,8 +181,12 @@
             border-radius: 12px;
             font-size: 0.9rem;
             outline: none;
+            transition: border-color 0.2s ease;
         }
-        .admin-input:focus { border-color: var(--primary); }
+
+        .admin-input:focus {
+            border-color: var(--primary);
+        }
 
         .btn {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -150,7 +203,11 @@
             align-items: center;
             gap: 6px;
         }
-        .btn:hover { box-shadow: 0 0 15px var(--primary-glow); transform: translateY(-1px); }
+
+        .btn:hover {
+            box-shadow: 0 0 15px var(--primary-glow);
+            transform: translateY(-1px);
+        }
 
         .btn-danger {
             background: rgba(239, 68, 68, 0.15);
@@ -163,8 +220,13 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        .btn-danger:hover { background: #ef4444; color: #fff; }
 
+        .btn-danger:hover {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        /* TABLE STYLING */
         .table-wrapper {
             overflow-x: auto;
             border-radius: 14px;
@@ -195,7 +257,9 @@
             color: #cbd5e1;
         }
 
-        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
 
         .ticket-code {
             font-family: monospace;
@@ -220,7 +284,7 @@
 
         .empty-state {
             text-align: center;
-            padding: 50px 20px;
+            padding: 60px 20px;
             color: var(--text-muted);
         }
     </style>
@@ -242,6 +306,14 @@
     </div>
 
     <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <div class="card">
             <div class="admin-header">
                 <div class="admin-title">
@@ -252,10 +324,11 @@
                 <div class="admin-actions">
                     <form method="POST" action="{{ url_for('view_bookings') }}" class="auth-form">
                         {% if not is_authenticated %}
-                            <input type="password" name="admin_pass" placeholder="Admin Passcode" class="admin-input" required>
+                            <input type="password" name="admin_pass" placeholder="Admin Passcode" class="admin-input" required autocomplete="current-password">
                             <button type="submit" name="action" value="authenticate" class="btn">Unlock Ledger</button>
                         {% else %}
                             <button type="submit" name="action" value="send_report" class="btn" style="background: rgba(255,255,255,0.06); color: #fff; border: 1px solid var(--border-glass);">📊 Send Daily Briefing</button>
+                            <input type="password" name="admin_pass" placeholder="Enter Wipe Passcode" class="admin-input" style="width: 170px;" required>
                             <button type="submit" name="action" value="reset_bookings" class="btn-danger" onclick="return confirm('WARNING: Are you sure you want to delete all booking records from Supabase? This action cannot be undone.');">⚠️ Reset All Bookings</button>
                         {% endif %}
                     </form>
@@ -293,13 +366,13 @@
                 </div>
             {% elif is_authenticated %}
                 <div class="empty-state">
-                    <p style="font-size: 1.1rem; margin-bottom: 6px; color: #fff;">✨ Ledger is currently empty.</p>
-                    <p style="font-size: 0.85rem; color: #64748b;">No active bookings found in the Supabase database.</p>
+                    <p style="font-size: 1.15rem; margin-bottom: 6px; color: #fff;">✨ Ledger is currently empty.</p>
+                    <p style="font-size: 0.88rem; color: #64748b;">No active bookings found in the Supabase database.</p>
                 </div>
             {% else %}
                 <div class="empty-state">
-                    <p style="font-size: 1.1rem; margin-bottom: 6px;">🔒 Ledger Locked</p>
-                    <p style="font-size: 0.85rem; color: #64748b;">Enter your Admin Passcode above to access live customer bookings and management actions.</p>
+                    <p style="font-size: 1.2rem; margin-bottom: 6px; color: #fff;">🔒 Ledger Locked</p>
+                    <p style="font-size: 0.88rem; color: #64748b;">Enter your Admin Passcode above to access live customer bookings and management actions.</p>
                 </div>
             {% endif %}
         </div>
