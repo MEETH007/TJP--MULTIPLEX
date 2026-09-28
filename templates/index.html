@@ -246,6 +246,36 @@
             transform: scale(1.04);
         }
 
+        /* FLOATING POSTER TRAILER OVERLAY BUTTON */
+        .poster-play-btn {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(15, 21, 35, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            color: var(--primary);
+            padding: 8px 14px;
+            border-radius: 50px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .poster-play-btn:hover {
+            background: var(--primary);
+            color: #000;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+            transform: scale(1.05);
+        }
+
         .movie-body {
             padding: 22px;
             display: flex;
@@ -302,6 +332,85 @@
             box-shadow: 0 0 15px var(--primary-glow);
             transform: scale(1.04);
         }
+
+        /* TRAILER THEATER MODAL */
+        .trailer-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(12px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .trailer-backdrop.active {
+            display: flex;
+        }
+
+        .trailer-card {
+            background: #0b0f19;
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 860px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9), 0 0 40px rgba(245, 158, 11, 0.2);
+            position: relative;
+        }
+
+        .trailer-header {
+            padding: 16px 22px;
+            background: rgba(18, 24, 38, 0.8);
+            border-bottom: 1px solid var(--border-glass);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .trailer-title {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+
+        .close-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-glass);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: 800;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .trailer-frame-box {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            background: #000;
+        }
+
+        .trailer-frame-box iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
     </style>
 </head>
 <body>
@@ -340,9 +449,15 @@
     <div class="container">
         <div class="movie-grid">
             {% for movie in movies %}
+                {% set trailer_src = movie.trailer_url if movie.trailer_url is defined else (movie.trailer if movie.trailer is defined else '') %}
                 <div class="movie-card">
                     <div class="poster-wrapper">
                         <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" class="poster-img">
+                        {% if trailer_src %}
+                        <button type="button" class="poster-play-btn" onclick="openTrailer('{{ movie.title|escape }}', '{{ trailer_src }}')">
+                            ▶ Watch Trailer
+                        </button>
+                        {% endif %}
                     </div>
                     <div class="movie-body">
                         <div>
@@ -364,6 +479,54 @@
             {% endfor %}
         </div>
     </div>
+
+    <!-- THEATER TRAILER MODAL -->
+    <div class="trailer-backdrop" id="trailerModal" onclick="closeOnBackdrop(event)">
+        <div class="trailer-card">
+            <div class="trailer-header">
+                <span class="trailer-title" id="modalMovieTitle">Official Trailer</span>
+                <button type="button" class="close-btn" onclick="closeTrailer()">✕</button>
+            </div>
+            <div class="trailer-frame-box">
+                <iframe id="trailerFrame" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openTrailer(title, url) {
+            document.getElementById('modalMovieTitle').textContent = title + " — Official Trailer";
+            
+            let embedUrl = url;
+            if (embedUrl.includes('watch?v=')) {
+                embedUrl = embedUrl.replace('watch?v=', 'embed/');
+            } else if (embedUrl.includes('youtu.be/')) {
+                embedUrl = embedUrl.replace('youtu.be/', 'www.youtube-nocookie.com/embed/');
+            }
+            if (!embedUrl.includes('autoplay=1')) {
+                embedUrl += (embedUrl.includes('?') ? '&' : '?') + 'autoplay=1';
+            }
+
+            document.getElementById('trailerFrame').src = embedUrl;
+            document.getElementById('trailerModal').classList.add('active');
+        }
+
+        function closeTrailer() {
+            const modal = document.getElementById('trailerModal');
+            modal.classList.remove('active');
+            document.getElementById('trailerFrame').src = "";
+        }
+
+        function closeOnBackdrop(e) {
+            if (e.target.id === 'trailerModal') {
+                closeTrailer();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeTrailer();
+        });
+    </script>
 
 </body>
 </html>
