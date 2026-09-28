@@ -121,6 +121,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .admin-input {
@@ -151,18 +152,18 @@
         }
         .btn:hover { box-shadow: 0 0 15px var(--primary-glow); transform: translateY(-1px); }
 
-        .btn-outline-danger {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.35);
             padding: 10px 18px;
             border-radius: 12px;
             font-weight: 700;
             font-size: 0.85rem;
             cursor: pointer;
-            text-decoration: none;
+            transition: all 0.2s ease;
         }
-        .btn-outline-danger:hover { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #ef4444; color: #fff; }
 
         .table-wrapper {
             overflow-x: auto;
@@ -250,14 +251,18 @@
 
                 <div class="admin-actions">
                     <form method="POST" action="{{ url_for('view_bookings') }}" class="auth-form">
-                        <input type="password" name="admin_pass" placeholder="Admin Passcode" class="admin-input">
-                        <button type="submit" name="action" value="authenticate" class="btn">Unlock Ledger</button>
-                        <button type="submit" name="action" value="send_report" class="btn" style="background: rgba(255,255,255,0.06); color: #fff; border: 1px solid var(--border-glass);">📊 Send Daily Briefing</button>
+                        {% if not is_authenticated %}
+                            <input type="password" name="admin_pass" placeholder="Admin Passcode" class="admin-input" required>
+                            <button type="submit" name="action" value="authenticate" class="btn">Unlock Ledger</button>
+                        {% else %}
+                            <button type="submit" name="action" value="send_report" class="btn" style="background: rgba(255,255,255,0.06); color: #fff; border: 1px solid var(--border-glass);">📊 Send Daily Briefing</button>
+                            <button type="submit" name="action" value="reset_bookings" class="btn-danger" onclick="return confirm('WARNING: Are you sure you want to delete all booking records from Supabase? This action cannot be undone.');">⚠️ Reset All Bookings</button>
+                        {% endif %}
                     </form>
                 </div>
             </div>
 
-            {% if bookings and bookings|length > 0 %}
+            {% if is_authenticated and bookings and bookings|length > 0 %}
                 <div class="table-wrapper">
                     <table>
                         <thead>
@@ -286,10 +291,15 @@
                         </tbody>
                     </table>
                 </div>
+            {% elif is_authenticated %}
+                <div class="empty-state">
+                    <p style="font-size: 1.1rem; margin-bottom: 6px; color: #fff;">✨ Ledger is currently empty.</p>
+                    <p style="font-size: 0.85rem; color: #64748b;">No active bookings found in the Supabase database.</p>
+                </div>
             {% else %}
                 <div class="empty-state">
-                    <p style="font-size: 1.1rem; margin-bottom: 6px;">🔒 No active bookings displayed.</p>
-                    <p style="font-size: 0.85rem; color: #64748b;">Enter your Admin Passcode above to decrypt and access the live database records.</p>
+                    <p style="font-size: 1.1rem; margin-bottom: 6px;">🔒 Ledger Locked</p>
+                    <p style="font-size: 0.85rem; color: #64748b;">Enter your Admin Passcode above to access live customer bookings and management actions.</p>
                 </div>
             {% endif %}
         </div>
