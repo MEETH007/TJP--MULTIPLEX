@@ -1,32 +1,61 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card" style="max-width: 480px; margin: auto; text-align: center;">
-    <h2 style="color: var(--primary); margin-bottom: 6px;">Gate Pass Scanner</h2>
-    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Input ticket ID or scan QR code at turnstile</p>
+<div style="max-width: 540px; margin: 40px auto 60px;">
 
-    <form method="POST">
-        <input type="text" name="ticket_id" placeholder="e.g. TJP1001" required autofocus
-               style="width: 100%; text-transform: uppercase; text-align: center; letter-spacing: 2px; font-weight: bold; margin-bottom: 12px;">
-        <button type="submit" class="btn" style="width: 100%;">Verify Pass</button>
-    </form>
+    <!-- SCI-FI LASER GATE SCANNER CARD -->
+    <div style="background: rgba(15, 21, 35, 0.75); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 36px 30px; box-shadow: 0 30px 60px -15px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1); position: relative; overflow: hidden;">
+        
+        <!-- Live scanning aesthetic line -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #f59e0b, transparent); animation: scanline 2.8s ease-in-out infinite;"></div>
 
-    {% if result %}
-        <div style="background: rgba(46, 204, 113, 0.15); padding: 20px; margin-top: 24px; border-radius: var(--radius-sm); border: 2px solid var(--success); text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 style="color: var(--success); font-size: 1.15rem;">✔ ADMIT PASSENGER</h3>
-                <span style="font-weight: 800; color: var(--primary);">{{ result.ticket_id }}</span>
+        <div style="text-align: center; margin-bottom: 28px;">
+            <div style="width: 52px; height: 52px; margin: 0 auto 14px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #f59e0b; box-shadow: 0 0 25px rgba(245, 158, 11, 0.25);">
+                ⚡
             </div>
-            <p style="margin-bottom: 4px;"><strong>Name:</strong> {{ result.name }} (Age {{ result.age }})</p>
-            <p style="margin-bottom: 4px;"><strong>Movie:</strong> {{ result.movie }}</p>
-            <p style="margin-bottom: 4px;"><strong>Show:</strong> {{ result.show_time }}</p>
-            <p style="margin-bottom: 4px;"><strong>Seats:</strong> <span style="color: var(--primary); font-weight: 700;">{{ result.seats }}</span></p>
-            <p style="margin-bottom: 0;"><strong>Paid Total:</strong> Rs. {{ result.total_price }}</p>
+            <h2 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.7rem; font-weight: 800; color: #fff; margin-bottom: 6px;">Turnstile Gate Scanner</h2>
+            <p style="color: #94a3b8; font-size: 0.88rem;">Scan pass QR code or enter the 8-character Ticket ID</p>
         </div>
-    {% elif request.method == "POST" %}
-        <div style="background: rgba(231, 76, 60, 0.15); padding: 18px; margin-top: 24px; border-radius: var(--radius-sm); border: 2px solid var(--danger);">
-            <h3 style="color: var(--danger); font-size: 1.1rem; margin-bottom: 4px;">✖ TICKET NOT FOUND</h3>
-            <p style="color: var(--text-muted); font-size: 0.85rem;">No corresponding record in Supabase database.</p>
+
+        <form method="POST" action="{{ url_for('scan_ticket') }}">
+            <div style="position: relative; margin-bottom: 18px;">
+                <input type="text" name="ticket_id" value="{{ searched_id }}" placeholder="e.g. TJP-97612D7" autofocus required
+                       style="width: 100%; padding: 16px 20px; background: rgba(5, 7, 14, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; color: #ffcc00; font-family: monospace; font-size: 1.25rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; text-align: center; outline: none; transition: border-color 0.2s;"
+                       onfocus="this.style.borderColor='#f59e0b'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+            </div>
+
+            <button type="submit" class="btn" style="width: 100%; padding: 15px; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.5px; border-radius: 14px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #000; border: none; cursor: pointer; box-shadow: 0 0 25px rgba(245, 158, 11, 0.35); transition: transform 0.2s;">
+                Verify &amp; Admit Guest &rarr;
+            </button>
+        </form>
+
+        <!-- VERIFICATION RESULT CARD -->
+        {% if ticket %}
+        <div style="margin-top: 26px; padding: 20px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 16px; animation: fadeIn 0.3s ease;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <span style="color: #10b981; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; text-transform: uppercase;">✔ Pass Verified &bull; Admitted</span>
+                <span style="color: #fff; font-family: monospace; font-weight: 700;">{{ ticket.ticket_id }}</span>
+            </div>
+            <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 4px;">{{ ticket.movie }}</h3>
+            <p style="color: #94a3b8; font-size: 0.88rem; margin-bottom: 12px;">🕒 {{ ticket.show_time }}</p>
+            <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; font-size: 0.9rem;">
+                <span style="color: #94a3b8;">Guest: <strong style="color: #fff;">{{ ticket.name }}</strong></span>
+                <span style="color: #ffcc00; font-weight: 800;">Seats: {{ ticket.seats }}</span>
+            </div>
         </div>
-    {% endif %}
+        {% endif %}
+
+    </div>
 </div>
+
+<style>
+@keyframes scanline {
+    0% { transform: translateY(0); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translateY(420px); opacity: 0; }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
 {% endblock %}
