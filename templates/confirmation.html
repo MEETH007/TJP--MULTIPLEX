@@ -2,23 +2,29 @@
 {% block content %}
 
 {% set data = b if b is defined and b else booking %}
+{% set qr_code_url = "https://quickchart.io/qr?text=" ~ data.ticket_id ~ "&size=220&margin=1" %}
 
-<div class="card" style="max-width: 550px; margin: 30px auto; padding: 0; overflow: hidden; border: 1px solid var(--card-border); background: #111827; box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
+<div class="card" style="max-width: 520px; margin: 30px auto; padding: 0; overflow: hidden; border: 1px solid var(--card-border); background: #111827; box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
     <!-- Header Banner -->
     <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; text-align: center; color: #fff;">
-        <div style="font-size: 2.2rem; margin-bottom: 4px;">🎟️</div>
-        <h2 style="margin: 0; font-size: 1.4rem; letter-spacing: 0.5px;">Booking Confirmed!</h2>
+        <h2 style="margin: 0; font-size: 1.4rem; letter-spacing: 0.5px;">🎟️ Booking Confirmed!</h2>
         <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 0.85rem;">Present this digital boarding pass at the gate</p>
     </div>
 
     <!-- Ticket Pass Body -->
-    <div style="padding: 24px;">
-        <div style="text-align: center; margin-bottom: 18px;">
-            <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Ticket ID</span>
-            <h3 style="color: var(--primary); font-family: monospace; font-size: 1.4rem; margin-top: 2px;">{{ data.ticket_id }}</h3>
+    <div style="padding: 24px; text-align: center;">
+
+        <!-- LIVE QR CODE -->
+        <div style="background: #ffffff; padding: 14px; display: inline-block; border-radius: 12px; margin: 10px auto 16px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+            <img src="{{ qr_code_url }}" alt="Ticket QR Code" width="180" height="180" style="display: block;">
         </div>
 
-        <div style="border-top: 1px dashed #374151; border-bottom: 1px dashed #374151; padding: 18px 0; margin-bottom: 18px;">
+        <div style="margin-bottom: 18px;">
+            <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Ticket Pass ID</span>
+            <h3 style="color: var(--primary); font-family: monospace; font-size: 1.5rem; margin-top: 2px;">{{ data.ticket_id }}</h3>
+        </div>
+
+        <div style="text-align: left; border-top: 1px dashed #374151; border-bottom: 1px dashed #374151; padding: 18px 0; margin-bottom: 18px;">
             <div style="margin-bottom: 14px;">
                 <span style="font-size: 0.8rem; color: var(--text-muted);">Movie Title</span>
                 <h3 style="color: #fff; margin: 2px 0 0 0; font-size: 1.25rem;">{{ data.movie }}</h3>
