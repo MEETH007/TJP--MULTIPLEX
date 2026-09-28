@@ -407,46 +407,62 @@ def food_and_snacks():
     )
     
 def send_customer_ticket_email(to_email, customer_name, booking_data):
-    """Sends immediate cinema pass confirmation to the customer via Brevo."""
+    """Sends cinema boarding pass with scannable QR code via Brevo."""
     if not BREVO_API_KEY or not BREVO_SENDER_EMAIL or not to_email or "@" not in to_email:
         print("Skipping Brevo customer email: Missing API key or invalid recipient.")
         return False
 
+    ticket_id = booking_data["ticket_id"]
+    qr_url = f"https://quickchart.io/qr?text={ticket_id}&size=200&margin=1"
+
     ticket_html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #0f172a; color: #f8fafc;">
-        <div style="text-align: center; border-bottom: 2px dashed #334155; padding-bottom: 16px; margin-bottom: 20px;">
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; padding: 24px; border: 1px solid #334155; border-radius: 14px; background: #0f172a; color: #f8fafc; text-align: center;">
+        <div style="border-bottom: 2px dashed #334155; padding-bottom: 16px; margin-bottom: 20px;">
             <h1 style="color: #ffcc00; margin: 0; font-size: 1.6rem; letter-spacing: 1px;">🎬 TJP CINEMA</h1>
             <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Official Digital Boarding Pass</p>
         </div>
 
-        <div style="margin-bottom: 16px;">
+        <!-- LIVE QR CODE -->
+        <div style="background: #ffffff; padding: 14px; display: inline-block; border-radius: 10px; margin-bottom: 16px;">
+            <img src="{qr_url}" alt="Ticket QR Code" width="160" height="160" style="display: block; margin: auto;">
+        </div>
+
+        <div>
             <p style="margin: 0; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">Ticket ID</p>
-            <h2 style="margin: 2px 0 0 0; color: #ffcc00; font-family: monospace;">{booking_data['ticket_id']}</h2>
+            <h2 style="margin: 2px 0 16px 0; color: #ffcc00; font-family: monospace; font-size: 1.5rem;">{ticket_id}</h2>
         </div>
 
-        <div style="margin-bottom: 14px;">
-            <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;">Movie</p>
-            <h3 style="margin: 2px 0 0 0; color: #ffffff;">{booking_data['movie']}</h3>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; margin-bottom: 14px;">
-            <div>
-                <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;">Showtime</p>
-                <p style="margin: 2px 0 0 0; font-weight: bold; color: #ffffff;">{booking_data['show_time']}</p>
+        <div style="text-align: left; background: rgba(255,255,255,0.05); padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+            <div style="margin-bottom: 10px;">
+                <span style="color: #94a3b8; font-size: 0.8rem;">Movie:</span>
+                <strong style="color: #ffffff; display: block; font-size: 1.1rem;">{booking_data['movie']}</strong>
             </div>
-            <div>
-                <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;">Seats</p>
-                <p style="margin: 2px 0 0 0; font-weight: bold; color: #ffcc00;">{booking_data['seats']}</p>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <div>
+                    <span style="color: #94a3b8; font-size: 0.8rem;">Showtime:</span>
+                    <strong style="color: #ffffff; display: block;">🕒 {booking_data['show_time']}</strong>
+                </div>
+                <div style="text-align: right;">
+                    <span style="color: #94a3b8; font-size: 0.8rem;">Seats:</span>
+                    <strong style="color: #ffcc00; display: block; font-size: 1.1rem;">{booking_data['seats']}</strong>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; border-top: 1px solid #334155; padding-top: 10px;">
+                <div>
+                    <span style="color: #94a3b8; font-size: 0.8rem;">Guest:</span>
+                    <strong style="color: #ffffff; display: block;">{customer_name}</strong>
+                </div>
+                <div style="text-align: right;">
+                    <span style="color: #94a3b8; font-size: 0.8rem;">Total Paid:</span>
+                    <strong style="color: #22c55e; display: block; font-size: 1.1rem;">Rs. {booking_data['total_price']:,.2f}</strong>
+                </div>
             </div>
         </div>
 
-        <div style="border-top: 1px solid #334155; padding-top: 14px; margin-top: 14px;">
-            <p style="margin: 0 0 4px 0; color: #94a3b8; font-size: 0.85rem;">Guest: <strong style="color: #ffffff;">{customer_name}</strong></p>
-            <p style="margin: 0; color: #22c55e; font-size: 1.1rem; font-weight: bold;">Total Paid: Rs. {booking_data['total_price']:,.2f}</p>
-        </div>
-
-        <p style="margin-top: 24px; font-size: 0.75rem; color: #64748b; text-align: center;">
-            Please present this QR / Ticket ID at the cinema entrance. Enjoy your screening!
+        <p style="margin-top: 18px; font-size: 0.75rem; color: #64748b;">
+            Scan this QR code at the multiplex gate scanner for direct entry. Enjoy your screening!
         </p>
     </div>
     """
@@ -454,7 +470,7 @@ def send_customer_ticket_email(to_email, customer_name, booking_data):
     payload = {
         "sender": {"name": "TJP Cinema Box Office", "email": BREVO_SENDER_EMAIL},
         "to": [{"email": to_email, "name": customer_name}],
-        "subject": f"🎟️ Your Movie Pass — {booking_data['movie']} ({booking_data['ticket_id']})",
+        "subject": f"🎟️ Your Ticket Pass [{ticket_id}] — {booking_data['movie']}",
         "htmlContent": ticket_html
     }
 
