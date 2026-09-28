@@ -710,44 +710,57 @@ def scan_ticket():
 # -------------------------------------------------------------
 @app.route("/bookings", methods=["GET", "POST"])
 def view_bookings():
-    # Correct admin credentials check
-    correct_pass = os.environ.get("ADMIN_PASSWORD", "admin123")
+    # Read strictly from environment without exposing plain-text fallbacks
+    view_password = (os.environ.get("BOOKINGS_PASSWORD") or "").strip()
+    reset_password = (os.environ.get("ADMIN_RESET_PASSWORD") or "").strip()
 
     if request.method == "POST":
-        action = request.form.get("action")
-        # Accept either admin_pass or password field names
-        entered_pass = (request.form.get("admin_pass") or request.form.get("password") or "").strip()
+        action = request.form.get("action", "authenticate")
+        entered_pass = (
+            request.form.get("admin_pass") 
+            or request.form.get("password") 
+            or request.form.get("passcode") 
+            or ""
+        ).strip()
 
         if action == "authenticate":
-            if entered_pass == correct_pass:
+            # Compare directly against the environment variable
+            if view_password and entered_pass == view_password:
                 session["admin_logged_in"] = True
                 flash("Admin ledger unlocked successfully!")
             else:
                 session["admin_logged_in"] = False
                 flash("Incorrect admin passcode.")
+            return redirect(url_for("view_bookings"))
 
         elif action == "reset_bookings":
-            if session.get("admin_logged_in") or entered_pass == correct_pass:
+            # Allow reset only if authenticated or if wipe password matches environment
+            authorized = (
+                (reset_password and entered_pass == reset_password)
+                or (session.get("admin_logged_in") and reset_password and entered_pass == reset_password)
+                or (session.get("admin_logged_in") and not entered_pass)
+            )
+            if authorized:
                 try:
-                    # Clean out bookings and active locks
                     supabase.table("bookings").delete().neq("ticket_id", "0").execute()
                     supabase.table("seat_locks").delete().neq("session_id", "0").execute()
-                    flash("All booking records and seat locks have been reset.")
+                    flash("All booking records and seat holds have been reset.")
                 except Exception as e:
-                    print("Error resetting bookings:", e)
-                    flash("Failed to reset bookings in Supabase.")
+                    print("Supabase wipe error:", e)
+                    flash("Failed to wipe database records.")
             else:
-                flash("Unauthorized: Unlock the ledger first to reset bookings.")
+                flash("Incorrect reset passcode.")
+            return redirect(url_for("view_bookings"))
 
         elif action == "send_report":
-            # Triggers existing revenue briefing email
             try:
                 send_daily_revenue_report()
                 flash("Daily revenue briefing dispatched to owner email!")
             except Exception as e:
-                flash(f"Report dispatch error: {e}")
+                flash(f"Report error: {e}")
+            return redirect(url_for("view_bookings"))
 
-    # Fetch records if authenticated
+    # Fetch ledger records if unlocked
     all_bookings = []
     is_authenticated = session.get("admin_logged_in", False)
     if is_authenticated:
