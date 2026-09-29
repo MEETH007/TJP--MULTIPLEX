@@ -178,6 +178,294 @@
             from { opacity: 0; transform: translateY(12px) scale(0.96); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
+
+        /* ================================================== */
+        /*         PREMIUM GLASSMORPHIC CINEBOT WIDGET        */
+        /* ================================================== */
+        #cinebot-btn {
+            position: fixed;
+            bottom: 26px;
+            right: 28px;
+            height: 56px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 20px 6px 8px;
+            border-radius: 9999px;
+            background: rgba(18, 18, 22, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7),
+                        0 0 25px 2px rgba(245, 158, 11, 0.25);
+            cursor: pointer;
+            z-index: 1500;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+        }
+
+        #cinebot-btn:hover {
+            transform: translateY(-3px) scale(1.03);
+            border-color: rgba(245, 158, 11, 0.8);
+            box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.85),
+                        0 0 35px 6px rgba(245, 158, 11, 0.5);
+        }
+
+        .cinebot-icon-orb {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .cinebot-icon-orb::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            border: 2px solid rgba(245, 158, 11, 0.6);
+            animation: orbPulse 2.5s infinite ease-out;
+        }
+
+        @keyframes orbPulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.18); opacity: 0; }
+            100% { transform: scale(0.95); opacity: 0; }
+        }
+
+        .cinebot-icon-orb svg {
+            width: 20px;
+            height: 20px;
+            fill: #09090b;
+        }
+
+        .cinebot-label-group {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .cinebot-label-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+            line-height: 1.2;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cinebot-status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        .cinebot-label-sub {
+            font-size: 11px;
+            font-weight: 500;
+            color: #f59e0b;
+            letter-spacing: 0.2px;
+        }
+
+        #cinebot-window {
+            position: fixed;
+            bottom: 96px;
+            right: 28px;
+            width: 380px;
+            max-width: calc(100vw - 36px);
+            height: 520px;
+            max-height: calc(100vh - 120px);
+            background: rgba(14, 18, 28, 0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            border-radius: 20px;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9),
+                        0 0 30px rgba(245, 158, 11, 0.15);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1500;
+            animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .cinebot-header {
+            padding: 14px 18px;
+            background: rgba(22, 28, 44, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cinebot-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cinebot-header-title {
+            font-size: 14px;
+            font-weight: 800;
+            font-family: 'Space Grotesk', sans-serif;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cinebot-header-sub {
+            font-size: 11px;
+            color: #10b981;
+            font-weight: 700;
+        }
+
+        .cinebot-close-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 20px;
+            line-height: 1;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        .cinebot-close-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .cinebot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+        }
+
+        .cinebot-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .cinebot-messages::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.25);
+            border-radius: 10px;
+        }
+
+        .cinebot-bubble {
+            max-width: 86%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 13.5px;
+            line-height: 1.45;
+            word-wrap: break-word;
+        }
+
+        .cinebot-bubble-bot {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            border-bottom-left-radius: 4px;
+        }
+
+        .cinebot-bubble-bot a {
+            color: #f59e0b;
+            font-weight: 700;
+            text-decoration: underline;
+        }
+
+        .cinebot-bubble-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #000000;
+            font-weight: 700;
+            border-bottom-right-radius: 4px;
+        }
+
+        .cinebot-footer {
+            padding: 12px 14px;
+            background: rgba(5, 7, 14, 0.7);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .cinebot-form {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cinebot-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: #ffffff;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .cinebot-input:focus {
+            border-color: rgba(245, 158, 11, 0.5);
+        }
+
+        .cinebot-send-btn {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 0 16px;
+            height: 38px;
+            font-weight: 800;
+            cursor: pointer;
+            color: #000000;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .cinebot-send-btn:hover {
+            transform: scale(1.04);
+            box-shadow: 0 0 14px rgba(245, 158, 11, 0.4);
+        }
+
+        @media (max-width: 480px) {
+            .cinebot-label-group {
+                display: none;
+            }
+            #cinebot-btn {
+                padding: 6px;
+                width: 54px;
+                height: 54px;
+                justify-content: center;
+                border-radius: 50%;
+                right: 18px;
+                bottom: 18px;
+            }
+            #cinebot-window {
+                right: 14px;
+                left: 14px;
+                width: auto;
+                bottom: 82px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -225,49 +513,58 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- FLOATING AI VIP CONCIERGE BUTTON -->
-    <div id="aiToggle" onclick="toggleAIChat()" style="position: fixed; bottom: 24px; right: 24px; z-index: 1500; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #000; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; cursor: pointer; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.45); transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
-        ✨
-    </div>
+    <!-- FLOATING LUXURY CINEBOT PILL TRIGGER -->
+    <button id="cinebot-btn" onclick="toggleAIChat()" aria-label="Open TJP Concierge">
+        <div class="cinebot-icon-orb">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2L14.39 8.26L21 9.27L16.2 13.97L17.5 20.5L12 17.27L6.5 20.5L7.8 13.97L3 9.27L9.61 8.26L12 2Z" />
+            </svg>
+        </div>
+        <div class="cinebot-label-group">
+            <span class="cinebot-label-title">
+                <span class="cinebot-status-dot"></span>
+                CineBot AI
+            </span>
+            <span class="cinebot-label-sub">Ask for advice & snacks</span>
+        </div>
+    </button>
 
-    <!-- CHAT DIALOG BOX -->
-    <div id="aiChatBox" style="display: none; position: fixed; bottom: 92px; right: 24px; width: 350px; height: 470px; background: rgba(15, 21, 35, 0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.85); z-index: 1500; flex-direction: column; overflow: hidden; animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
-        
-        <!-- HEADER -->
-        <div style="background: rgba(18, 24, 38, 0.95); padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.2rem;">🎬</span>
+    <!-- GLASSMORPHIC CHAT DIALOG BOX -->
+    <div id="cinebot-window" role="dialog" aria-modal="true" aria-label="TJP Concierge Chat">
+        <div class="cinebot-header">
+            <div class="cinebot-header-left">
+                <span style="font-size: 1.25rem;">🎬</span>
                 <div>
-                    <strong style="color: #fff; font-size: 0.92rem; display: block; font-family: 'Space Grotesk', sans-serif;">TJP Concierge</strong>
-                    <span style="color: #10b981; font-size: 0.72rem; font-weight: 700;">● Powered by Gemini</span>
+                    <div class="cinebot-header-title">TJP Concierge</div>
+                    <div class="cinebot-header-sub">● Powered by Gemini</div>
                 </div>
             </div>
-            <span onclick="toggleAIChat()" style="color: #94a3b8; cursor: pointer; font-size: 1.2rem; padding: 2px 6px; border-radius: 6px;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">✕</span>
+            <button class="cinebot-close-btn" onclick="toggleAIChat()" aria-label="Close chat">✕</button>
         </div>
 
-        <!-- MESSAGES LOG -->
-        <div id="chatMessages" style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.88rem; scroll-behavior: smooth;">
-            <div style="align-self: flex-start; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); padding: 10px 14px; border-radius: 14px; color: #cbd5e1; max-width: 88%; line-height: 1.45;">
+        <div class="cinebot-messages" id="chatMessages">
+            <div class="cinebot-bubble cinebot-bubble-bot">
                 Welcome to TJP Cinema. Looking for showtimes, movie suggestions, or snacks?
             </div>
         </div>
 
-        <!-- USER INPUT ROW -->
-        <div style="padding: 12px 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; gap: 8px; background: rgba(5, 7, 14, 0.65);">
-            <input id="aiInput" type="text" placeholder="Ask about movies, snacks, or IMAX..." onkeypress="if(event.key==='Enter') sendAIMessage()"
-                   style="flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 9px 12px; color: #fff; font-size: 0.85rem; outline: none;">
-            <button onclick="sendAIMessage()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; border-radius: 12px; padding: 0 15px; font-weight: 800; cursor: pointer; color: #000; font-size: 0.95rem;">
-                ➤
-            </button>
+        <div class="cinebot-footer">
+            <form class="cinebot-form" id="aiForm" onsubmit="event.preventDefault(); sendAIMessage();">
+                <input id="aiInput" class="cinebot-input" type="text" placeholder="Ask about movies, snacks, or IMAX..." autocomplete="off">
+                <button type="submit" class="cinebot-send-btn" aria-label="Send message">
+                    ➤
+                </button>
+            </form>
         </div>
     </div>
 
     <script>
         function toggleAIChat() {
-            const box = document.getElementById("aiChatBox");
-            box.style.display = (box.style.display === "none" || box.style.display === "") ? "flex" : "none";
-            if (box.style.display === "flex") {
-                setTimeout(() => document.getElementById("aiInput").focus(), 100);
+            const box = document.getElementById("cinebot-window");
+            const isOpen = box.style.display === "flex";
+            box.style.display = isOpen ? "none" : "flex";
+            if (!isOpen) {
+                setTimeout(() => document.getElementById("aiInput").focus(), 80);
             }
         }
 
@@ -279,21 +576,21 @@
             const messagesBox = document.getElementById("chatMessages");
 
             // Customer message
-            messagesBox.innerHTML += `
-                <div style="align-self: flex-end; background: #f59e0b; color: #000; font-weight: 700; padding: 8px 13px; border-radius: 14px; max-width: 82%;">
-                    ${msg}
-                </div>
-            `;
+            const userBubble = document.createElement("div");
+            userBubble.className = "cinebot-bubble cinebot-bubble-user";
+            userBubble.textContent = msg;
+            messagesBox.appendChild(userBubble);
+
             input.value = "";
             messagesBox.scrollTop = messagesBox.scrollHeight;
 
-            // Loading message
-            const loadingId = "loader_" + Date.now();
-            messagesBox.innerHTML += `
-                <div id="${loadingId}" style="align-self: flex-start; color: #94a3b8; font-size: 0.8rem; font-style: italic; display: flex; align-items: center; gap: 6px;">
-                    <span>✨ Checking theater inventory...</span>
-                </div>
-            `;
+            // Loading state
+            const loadingBubble = document.createElement("div");
+            loadingBubble.className = "cinebot-bubble cinebot-bubble-bot";
+            loadingBubble.style.fontStyle = "italic";
+            loadingBubble.style.color = "#94a3b8";
+            loadingBubble.innerHTML = "✨ Checking theater inventory...";
+            messagesBox.appendChild(loadingBubble);
             messagesBox.scrollTop = messagesBox.scrollHeight;
 
             try {
@@ -303,22 +600,13 @@
                     body: JSON.stringify({ message: msg })
                 });
                 const data = await res.json();
-                const loaderElem = document.getElementById(loadingId);
-                if (loaderElem) loaderElem.remove();
-
-                messagesBox.innerHTML += `
-                    <div style="align-self: flex-start; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); padding: 11px 14px; border-radius: 14px; color: #f8fafc; max-width: 88%; line-height: 1.45;">
-                        ${data.reply}
-                    </div>
-                `;
+                loadingBubble.style.fontStyle = "normal";
+                loadingBubble.style.color = "#cbd5e1";
+                loadingBubble.innerHTML = data.reply || "I am ready to help with tickets and showtimes!";
             } catch (e) {
-                const loaderElem = document.getElementById(loadingId);
-                if (loaderElem) loaderElem.remove();
-                messagesBox.innerHTML += `
-                    <div style="align-self: flex-start; color: #ef4444; font-size: 0.8rem;">
-                        Could not reach concierge. Please try again.
-                    </div>
-                `;
+                loadingBubble.style.fontStyle = "normal";
+                loadingBubble.style.color = "#ef4444";
+                loadingBubble.textContent = "Could not reach concierge. Please try again.";
             }
             messagesBox.scrollTop = messagesBox.scrollHeight;
         }
