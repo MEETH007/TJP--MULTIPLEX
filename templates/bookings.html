@@ -110,18 +110,54 @@
             border-color: rgba(245, 158, 11, 0.3);
         }
 
-        /* FLASH MESSAGES */
-        .flash {
+        /* GLASS FLASH NOTIFICATIONS */
+        .flash-container {
             max-width: 1200px;
-            margin: 0 auto 20px;
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--primary);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            padding: 12px 20px;
-            border-radius: 12px;
+            margin: 0 auto 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .flash-alert {
+            background: rgba(5, 7, 14, 0.45);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 14px;
+            padding: 13px 20px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             text-align: center;
-            font-weight: 600;
-            font-size: 0.9rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            animation: flashSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .flash-alert.warning {
+            color: #f59e0b;
+            border: 1px solid #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.15), inset 0 0 15px rgba(245, 158, 11, 0.05);
+        }
+
+        .flash-alert.error {
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.15), inset 0 0 15px rgba(239, 68, 68, 0.05);
+        }
+
+        .flash-alert.success {
+            color: #10b981;
+            border: 1px solid #10b981;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.15), inset 0 0 15px rgba(16, 185, 129, 0.05);
+        }
+
+        @keyframes flashSlide {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* MAIN CONTAINER */
@@ -237,25 +273,27 @@
             margin-top: 10px;
         }
 
-        /* Clean Dark Scrollbar */
         .table-wrapper::-webkit-scrollbar {
             height: 6px;
         }
+
         .table-wrapper::-webkit-scrollbar-track {
             background: rgba(18, 24, 38, 0.5);
             border-radius: 10px;
         }
+
         .table-wrapper::-webkit-scrollbar-thumb {
             background: rgba(245, 158, 11, 0.35);
             border-radius: 10px;
         }
+
         .table-wrapper::-webkit-scrollbar-thumb:hover {
             background: var(--primary);
         }
 
         table {
             width: 100%;
-            min-width: 780px; /* Forces horizontal scrolling on mobile rather than column crushing */
+            min-width: 780px;
             border-collapse: collapse;
             text-align: left;
             font-size: 0.88rem;
@@ -290,7 +328,6 @@
             color: var(--primary);
         }
 
-        /* NEAT OVERFLOW TRUNCATION FOR CONTACT CELL */
         .contact-cell {
             max-width: 175px;
             overflow: hidden;
@@ -341,9 +378,27 @@
     <div class="container">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
-                {% for message in messages %}
-                    <div class="flash">{{ message }}</div>
-                {% endfor %}
+                <div class="flash-container">
+                    {% for message in messages %}
+                        {% set msg_lower = message|lower %}
+                        {% if 'incorrect' in msg_lower or 'failed' in msg_lower or 'unauthorized' in msg_lower or 'error' in msg_lower %}
+                            <div class="flash-alert error">
+                                <span>⚠️</span>
+                                <span>{{ message }}</span>
+                            </div>
+                        {% elif 'reset' in msg_lower or 'wipe' in msg_lower or 'expired' in msg_lower %}
+                            <div class="flash-alert warning">
+                                <span>⚡</span>
+                                <span>{{ message }}</span>
+                            </div>
+                        {% else %}
+                            <div class="flash-alert success">
+                                <span>✔</span>
+                                <span>{{ message }}</span>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
             {% endif %}
         {% endwith %}
 
