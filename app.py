@@ -849,12 +849,11 @@ def send_daily_report():
 
     return redirect(url_for("view_bookings"))
 
-# Fallback models in case the primary one encounters a temporary 503 high-demand spike
+# Use the active models recommended by the API
 CANDIDATE_MODELS = [
     "gemini-3.8-flash",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash"
+    "gemini-3.8-flash-lite",
+    "gemini-2.5-flash-lite"
 ]
 
 @app.route("/api/ai-concierge", methods=["POST"])
@@ -899,7 +898,7 @@ INSTRUCTIONS:
 
     last_error = None
     for model_name in CANDIDATE_MODELS:
-        for attempt in range(2):  # Try once, retry once on 503
+        for attempt in range(3):  # Give 3 attempts with slight backoff for 503
             try:
                 response = gemini_client.models.generate_content(
                     model=model_name,
@@ -917,9 +916,9 @@ INSTRUCTIONS:
                 err_str = str(e)
                 print(f"Warning: {model_name} attempt {attempt+1} failed: {err_str}")
                 if "503" in err_str or "UNAVAILABLE" in err_str:
-                    time.sleep(1)  # Brief pause before retrying
+                    time.sleep(1.5)  # Backoff wait before retrying 503
                     continue
-                break  # For 404 or other errors, immediately test the next model in the list
+                break  # If model is 404/not supported, move straight to the next model
 
     print("All Gemini Concierge fallbacks failed. Last error:", repr(last_error))
     return jsonify({"reply": "Our projectionists are fine-tuning the system. Feel free to explore our showtimes below or ask again in a moment!"})
