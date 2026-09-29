@@ -888,7 +888,7 @@ INSTRUCTIONS:
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-3.8-flash",
             contents=user_query,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
