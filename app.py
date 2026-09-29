@@ -4,12 +4,17 @@ import requests
 from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from supabase import create_client, Client
+from google import genai
+from google.genai import types
 
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
+# Setup Gemini AI Client (reads GEMINI_API_KEY from environment)
+gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "tjp_multiplex_secret_super_key_2026")
@@ -841,7 +846,62 @@ def send_daily_report():
         flash(f"Failed to generate report: {str(e)}")
 
     return redirect(url_for("view_bookings"))
+@app.route("/api/ai-concierge", methods=["POST"])
+def ai_concierge():
+    data = request.get_json() or {}
+    user_query = data.get("message", "").strip()
 
+    if not user_query:
+        return jsonify({"reply": "How can I assist your TJP Cinema experience today?"})
+
+    if not gemini_client:
+        return jsonify({"reply": "The AI Concierge is currently offline. Please book your tickets directly below!"})
+
+    # Pull live inventory from your MOVIES list
+    movie_context = []
+    for m in MOVIES:
+        movie_context.append(
+            f"- {m['title']} | Hall: {m['screen']} | Admission: Rs. {m['price']} | Showtimes: {', '.join(m['times'])} | Link: /select-seats?movie_id={m['id']}"
+        )
+
+    system_instruction = f"""
+You are "CineBot", the ultra-luxury VIP Cinema Concierge for TJP Cinema multiplex.
+Tone: Warm, courteous, cinema-savvy, concise, and refined.
+
+LIVE MOVIES & REAL-TIME INVENTORY:
+{chr(10).join(movie_context)}
+
+FOOD & BEVERAGES:
+100% Pure Vegetarian menu. Items include Gourmet Caramel Popcorn, Truffle Butter Salted Popcorn, Loaded Cheese & Jalapeño Nachos, Artisan Cold Coffee, and Sparkling Mocktails.
+
+CINEMA POLICIES:
+- Active 7-minute seat hold during selection.
+- Laser 4K projection & Dolby Atmos audio.
+- Digital Boarding Pass with turnstile QR code delivered instantly on screen and to email.
+
+INSTRUCTIONS:
+1. Recommend movies, timings, or snacks strictly based on the live inventory above.
+2. Whenever recommending a movie or timing, ALWAYS provide an HTML link so the user can click directly to book. Example: <a href="/select-seats?movie_id=1&time=09:00%20PM" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
+3. Keep answers tight and helpful (typically 2 to 4 sentences).
+"""
+
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=user_query,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.7,
+                max_output_tokens=300
+            )
+        )
+        reply_text = response.text or "I'm ready to assist with movies, showtimes, and snacks!"
+        return jsonify({"reply": reply_text})
+
+    except Exception as e:
+        print("Gemini Concierge Error:", repr(e))
+        return jsonify({"reply": "Our projectionists are fine-tuning the system. Feel free to explore our showtimes below or ask again in a moment!"})
+        
 # -------------------------------------------------------------
 # Server Entrypoint
 # -------------------------------------------------------------
