@@ -1,6 +1,7 @@
 import os
 import uuid
 import requests
+import time
 from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from supabase import create_client, Client
@@ -847,6 +848,15 @@ def send_daily_report():
         flash(f"Failed to generate report: {str(e)}")
 
     return redirect(url_for("view_bookings"))
+
+# Fallback models in case the primary one encounters a temporary 503 high-demand spike
+CANDIDATE_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash"
+]
+
 @app.route("/api/ai-concierge", methods=["POST"])
 def ai_concierge():
     data = request.get_json() or {}
@@ -858,7 +868,7 @@ def ai_concierge():
     if not gemini_client:
         return jsonify({"reply": "The AI Concierge is currently offline. Please book your tickets directly below!"})
 
-    # Assemble live catalog
+    # Prepare inventory context
     movie_context = []
     for m in MOVIES:
         movie_context.append(
@@ -883,25 +893,36 @@ CINEMA POLICIES:
 INSTRUCTIONS:
 1. Recommend movies, timings, or snacks strictly based on the live inventory above.
 2. Whenever recommending a movie or timing, ALWAYS provide an HTML link so the user can click directly to book. Example: <a href="/select-seats?movie_id=1&time=09:00%20PM" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
-3. Keep answers tight and helpful (typically 2 to 4 sentences).
+3. If the user asks something unrelated to TJP Cinema or movies, politely decline in persona and redirect them to today's cinema experience.
+4. Keep answers tight and helpful (typically 2 to 4 sentences).
 """
 
-    try:
-        response = gemini_client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=user_query,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.7,
-                max_output_tokens=300
-            )
-        )
-        reply_text = response.text or "I'm ready to assist with movies, showtimes, and snacks!"
-        return jsonify({"reply": reply_text})
+    last_error = None
+    for model_name in CANDIDATE_MODELS:
+        for attempt in range(2):  # Try once, retry once on 503
+            try:
+                response = gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=user_query,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        temperature=0.7,
+                        max_output_tokens=300
+                    )
+                )
+                if response and response.text:
+                    return jsonify({"reply": response.text})
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                print(f"Warning: {model_name} attempt {attempt+1} failed: {err_str}")
+                if "503" in err_str or "UNAVAILABLE" in err_str:
+                    time.sleep(1)  # Brief pause before retrying
+                    continue
+                break  # For 404 or other errors, immediately test the next model in the list
 
-    except Exception as e:
-        print("Gemini Concierge Error:", repr(e))
-        return jsonify({"reply": "Our projectionists are fine-tuning the system. Feel free to explore our showtimes below or ask again in a moment!"})
+    print("All Gemini Concierge fallbacks failed. Last error:", repr(last_error))
+    return jsonify({"reply": "Our projectionists are fine-tuning the system. Feel free to explore our showtimes below or ask again in a moment!"})
         
 # -------------------------------------------------------------
 # Server Entrypoint
