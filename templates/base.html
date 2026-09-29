@@ -173,6 +173,11 @@
             max-width: 1080px;
             margin: 0 auto;
         }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -219,5 +224,104 @@
     <main class="container">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- FLOATING AI VIP CONCIERGE BUTTON -->
+    <div id="aiToggle" onclick="toggleAIChat()" style="position: fixed; bottom: 24px; right: 24px; z-index: 1500; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #000; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; cursor: pointer; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.45); transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+        ✨
+    </div>
+
+    <!-- CHAT DIALOG BOX -->
+    <div id="aiChatBox" style="display: none; position: fixed; bottom: 92px; right: 24px; width: 350px; height: 470px; background: rgba(15, 21, 35, 0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.85); z-index: 1500; flex-direction: column; overflow: hidden; animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+        
+        <!-- HEADER -->
+        <div style="background: rgba(18, 24, 38, 0.95); padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">🎬</span>
+                <div>
+                    <strong style="color: #fff; font-size: 0.92rem; display: block; font-family: 'Space Grotesk', sans-serif;">TJP Concierge</strong>
+                    <span style="color: #10b981; font-size: 0.72rem; font-weight: 700;">● Powered by Gemini</span>
+                </div>
+            </div>
+            <span onclick="toggleAIChat()" style="color: #94a3b8; cursor: pointer; font-size: 1.2rem; padding: 2px 6px; border-radius: 6px;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">✕</span>
+        </div>
+
+        <!-- MESSAGES LOG -->
+        <div id="chatMessages" style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.88rem; scroll-behavior: smooth;">
+            <div style="align-self: flex-start; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); padding: 10px 14px; border-radius: 14px; color: #cbd5e1; max-width: 88%; line-height: 1.45;">
+                Welcome to TJP Cinema. Looking for showtimes, movie suggestions, or snacks?
+            </div>
+        </div>
+
+        <!-- USER INPUT ROW -->
+        <div style="padding: 12px 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; gap: 8px; background: rgba(5, 7, 14, 0.65);">
+            <input id="aiInput" type="text" placeholder="Ask about movies, snacks, or IMAX..." onkeypress="if(event.key==='Enter') sendAIMessage()"
+                   style="flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 9px 12px; color: #fff; font-size: 0.85rem; outline: none;">
+            <button onclick="sendAIMessage()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; border-radius: 12px; padding: 0 15px; font-weight: 800; cursor: pointer; color: #000; font-size: 0.95rem;">
+                ➤
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function toggleAIChat() {
+            const box = document.getElementById("aiChatBox");
+            box.style.display = (box.style.display === "none" || box.style.display === "") ? "flex" : "none";
+            if (box.style.display === "flex") {
+                setTimeout(() => document.getElementById("aiInput").focus(), 100);
+            }
+        }
+
+        async function sendAIMessage() {
+            const input = document.getElementById("aiInput");
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            const messagesBox = document.getElementById("chatMessages");
+
+            // Customer message
+            messagesBox.innerHTML += `
+                <div style="align-self: flex-end; background: #f59e0b; color: #000; font-weight: 700; padding: 8px 13px; border-radius: 14px; max-width: 82%;">
+                    ${msg}
+                </div>
+            `;
+            input.value = "";
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+
+            // Loading message
+            const loadingId = "loader_" + Date.now();
+            messagesBox.innerHTML += `
+                <div id="${loadingId}" style="align-self: flex-start; color: #94a3b8; font-size: 0.8rem; font-style: italic; display: flex; align-items: center; gap: 6px;">
+                    <span>✨ Checking theater inventory...</span>
+                </div>
+            `;
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+
+            try {
+                const res = await fetch("/api/ai-concierge", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                const loaderElem = document.getElementById(loadingId);
+                if (loaderElem) loaderElem.remove();
+
+                messagesBox.innerHTML += `
+                    <div style="align-self: flex-start; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); padding: 11px 14px; border-radius: 14px; color: #f8fafc; max-width: 88%; line-height: 1.45;">
+                        ${data.reply}
+                    </div>
+                `;
+            } catch (e) {
+                const loaderElem = document.getElementById(loadingId);
+                if (loaderElem) loaderElem.remove();
+                messagesBox.innerHTML += `
+                    <div style="align-self: flex-start; color: #ef4444; font-size: 0.8rem;">
+                        Could not reach concierge. Please try again.
+                    </div>
+                `;
+            }
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+        }
+    </script>
 </body>
 </html>
