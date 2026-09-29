@@ -14,9 +14,16 @@ try:
 except ImportError:
     pass
 
-# Initialize GenAI Client using the Authorization Key
+# Initialize GenAI Client using v1alpha to access active endpoints
 gemini_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
+gemini_client = (
+    genai.Client(
+        api_key=gemini_api_key,
+        http_options=types.HttpOptions(api_version="v1alpha")
+    )
+    if gemini_api_key
+    else None
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "tjp_multiplex_secret_super_key_2026")
@@ -849,11 +856,10 @@ def send_daily_report():
 
     return redirect(url_for("view_bookings"))
 
-# Use the active models recommended by the API
 CANDIDATE_MODELS = [
     "gemini-3.8-flash",
-    "gemini-3.8-flash-lite",
-    "gemini-2.5-flash-lite"
+    "gemini-3.8-pro",
+    "gemini-exp-1206"
 ]
 
 @app.route("/api/ai-concierge", methods=["POST"])
@@ -892,35 +898,27 @@ CINEMA POLICIES:
 INSTRUCTIONS:
 1. Recommend movies, timings, or snacks strictly based on the live inventory above.
 2. Whenever recommending a movie or timing, ALWAYS provide an HTML link so the user can click directly to book. Example: <a href="/select-seats?movie_id=1&time=09:00%20PM" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
-3. If the user asks something unrelated to TJP Cinema or movies, politely decline in persona and redirect them to today's cinema experience.
+3. If the user asks general movie questions (directors, actors, trivia), answer accurately and briefly in persona, then invite them to enjoy our screenings.
 4. Keep answers tight and helpful (typically 2 to 4 sentences).
 """
 
-    last_error = None
     for model_name in CANDIDATE_MODELS:
-        for attempt in range(3):  # Give 3 attempts with slight backoff for 503
-            try:
-                response = gemini_client.models.generate_content(
-                    model=model_name,
-                    contents=user_query,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_instruction,
-                        temperature=0.7,
-                        max_output_tokens=300
-                    )
+        try:
+            response = gemini_client.models.generate_content(
+                model=model_name,
+                contents=user_query,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.7,
+                    max_output_tokens=300
                 )
-                if response and response.text:
-                    return jsonify({"reply": response.text})
-            except Exception as e:
-                last_error = e
-                err_str = str(e)
-                print(f"Warning: {model_name} attempt {attempt+1} failed: {err_str}")
-                if "503" in err_str or "UNAVAILABLE" in err_str:
-                    time.sleep(1.5)  # Backoff wait before retrying 503
-                    continue
-                break  # If model is 404/not supported, move straight to the next model
+            )
+            if response and response.text:
+                return jsonify({"reply": response.text})
+        except Exception as e:
+            print(f"Concierge fallback ({model_name}):", repr(e))
+            continue
 
-    print("All Gemini Concierge fallbacks failed. Last error:", repr(last_error))
     return jsonify({"reply": "Our projectionists are fine-tuning the system. Feel free to explore our showtimes below or ask again in a moment!"})
         
 # -------------------------------------------------------------
