@@ -12,8 +12,9 @@ try:
     load_dotenv()
 except ImportError:
     pass
-# Setup Gemini AI Client (reads GEMINI_API_KEY from environment)
-gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+
+# Initialize GenAI Client using the Authorization Key
+gemini_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
 gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
 
 app = Flask(__name__)
@@ -857,7 +858,7 @@ def ai_concierge():
     if not gemini_client:
         return jsonify({"reply": "The AI Concierge is currently offline. Please book your tickets directly below!"})
 
-    # Pull live inventory from your MOVIES list
+    # Assemble live catalog
     movie_context = []
     for m in MOVIES:
         movie_context.append(
@@ -887,7 +888,7 @@ INSTRUCTIONS:
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=user_query,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
