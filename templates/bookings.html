@@ -226,35 +226,58 @@
             color: #fff;
         }
 
-        /* TABLE STYLING */
+        /* RESPONSIVE SCROLLABLE TABLE */
         .table-wrapper {
+            width: 100%;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             border-radius: 14px;
             border: 1px solid var(--border-glass);
+            background: rgba(5, 7, 14, 0.4);
+            margin-top: 10px;
+        }
+
+        /* Clean Dark Scrollbar */
+        .table-wrapper::-webkit-scrollbar {
+            height: 6px;
+        }
+        .table-wrapper::-webkit-scrollbar-track {
+            background: rgba(18, 24, 38, 0.5);
+            border-radius: 10px;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.35);
+            border-radius: 10px;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
         }
 
         table {
             width: 100%;
+            min-width: 780px; /* Forces horizontal scrolling on mobile rather than column crushing */
             border-collapse: collapse;
             text-align: left;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
         }
 
         th {
-            background: rgba(5, 7, 14, 0.7);
+            background: rgba(5, 7, 14, 0.85);
             color: var(--text-muted);
             font-weight: 700;
             text-transform: uppercase;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             letter-spacing: 1px;
-            padding: 14px 18px;
+            padding: 14px 16px;
             border-bottom: 1px solid var(--border-glass);
+            white-space: nowrap;
         }
 
         td {
-            padding: 14px 18px;
+            padding: 13px 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.04);
             color: #cbd5e1;
+            white-space: nowrap;
         }
 
         tr:hover td {
@@ -265,6 +288,16 @@
             font-family: monospace;
             font-weight: 800;
             color: var(--primary);
+        }
+
+        /* NEAT OVERFLOW TRUNCATION FOR CONTACT CELL */
+        .contact-cell {
+            max-width: 175px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #94a3b8;
+            cursor: help;
         }
 
         .seat-badge {
@@ -351,10 +384,15 @@
                         </thead>
                         <tbody>
                             {% for b in bookings %}
+                            {% set contact_val = b.phone or b.email or 'N/A' %}
                             <tr>
                                 <td><span class="ticket-code">{{ b.ticket_id }}</span></td>
                                 <td style="font-weight: 700; color: #fff;">{{ b.name }}</td>
-                                <td>{{ b.phone or b.email }}</td>
+                                <td>
+                                    <div class="contact-cell" title="{{ contact_val }}">
+                                        {{ contact_val }}
+                                    </div>
+                                </td>
                                 <td>{{ b.movie }}</td>
                                 <td>🕒 {{ b.show_time }}</td>
                                 <td><span class="seat-badge">{{ b.seats }}</span></td>
