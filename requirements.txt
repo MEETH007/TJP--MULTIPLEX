@@ -1,5 +1,6 @@
-Flask==3.0.3
-gunicorn==22.0.0
-supabase==2.7.4
-requests==2.32.3
-python-dotenv==1.0.1
+Flask>=3.0.0
+gunicorn>=21.2.0
+supabase>=2.0.0
+requests>=2.31.0
+google-genai>=0.1.1
+python-dotenv>=1.0.0
