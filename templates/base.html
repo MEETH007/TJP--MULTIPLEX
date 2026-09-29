@@ -21,7 +21,12 @@
             --success: #10b981;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
 
         body {
             background-color: var(--bg-deep);
@@ -33,6 +38,7 @@
             padding: 16px 16px 40px;
         }
 
+        /* FLOATING LUXURY NAVBAR */
         .nav-wrapper {
             position: sticky;
             top: 16px;
@@ -45,6 +51,7 @@
         .navbar {
             background: var(--surface-glass);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-glass);
             border-radius: 20px;
             padding: 12px 24px;
@@ -54,8 +61,18 @@
             box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
         }
 
-        .brand-block { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-        .brand-icon { font-size: 1.55rem; filter: drop-shadow(0 0 12px var(--primary-glow)); }
+        .brand-block {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .brand-icon {
+            font-size: 1.55rem;
+            filter: drop-shadow(0 0 12px var(--primary-glow));
+        }
+
         .brand-text {
             font-family: 'Space Grotesk', sans-serif;
             font-size: 1.45rem;
@@ -66,7 +83,12 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .nav-links { display: flex; align-items: center; gap: 10px; }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .nav-pill {
             color: var(--text-muted);
             text-decoration: none;
@@ -77,36 +99,80 @@
             border: 1px solid transparent;
             transition: all 0.25s ease;
         }
+
         .nav-pill:hover {
             color: #fff;
             background: rgba(255, 255, 255, 0.05);
             border-color: rgba(255, 255, 255, 0.1);
         }
+
         .nav-pill.primary {
             background: rgba(245, 158, 11, 0.12);
             color: var(--primary);
             border-color: rgba(245, 158, 11, 0.3);
         }
+
         .nav-pill.primary:hover {
             background: var(--primary);
             color: #000;
             box-shadow: 0 0 20px var(--primary-glow);
         }
 
-        .flash {
-            max-width: 600px;
-            margin: 0 auto 20px;
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 12px 20px;
-            border-radius: 12px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.9rem;
+        /* GLASS NOTIFICATION BANNERS */
+        .flash-container {
+            max-width: 680px;
+            margin: 0 auto 24px;
+            width: calc(100% - 32px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        .container { max-width: 1080px; margin: 0 auto; }
+        .flash-alert {
+            background: rgba(5, 7, 14, 0.45);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 14px;
+            padding: 13px 20px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            animation: flashSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .flash-alert.warning {
+            color: #f59e0b;
+            border: 1px solid #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.15), inset 0 0 15px rgba(245, 158, 11, 0.05);
+        }
+
+        .flash-alert.error {
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.15), inset 0 0 15px rgba(239, 68, 68, 0.05);
+        }
+
+        .flash-alert.success {
+            color: #10b981;
+            border: 1px solid #10b981;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.15), inset 0 0 15px rgba(16, 185, 129, 0.05);
+        }
+
+        @keyframes flashSlide {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
@@ -126,9 +192,27 @@
 
     {% with messages = get_flashed_messages() %}
         {% if messages %}
-            {% for message in messages %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
+            <div class="flash-container">
+                {% for message in messages %}
+                    {% set msg_lower = message|lower %}
+                    {% if 'expired' in msg_lower or 'selection' in msg_lower or 'warning' in msg_lower or 'hold' in msg_lower %}
+                        <div class="flash-alert warning">
+                            <span>⏳</span>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% elif 'incorrect' in msg_lower or 'failed' in msg_lower or 'unauthorized' in msg_lower or 'error' in msg_lower %}
+                        <div class="flash-alert error">
+                            <span>⚠️</span>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% else %}
+                        <div class="flash-alert success">
+                            <span>📨</span>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
         {% endif %}
     {% endwith %}
 
