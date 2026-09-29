@@ -4,7 +4,7 @@
 {% set data = b if b is defined and b else booking %}
 {% set qr_code_url = "https://quickchart.io/qr?text=" ~ data.ticket_id ~ "&size=220&margin=1" %}
 
-<div class="card" style="max-width: 520px; margin: 30px auto; padding: 0; overflow: hidden; border: 1px solid var(--card-border); background: #111827; box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
+<div class="card" style="max-width: 520px; margin: 30px auto; padding: 0; overflow: hidden; border: 1px solid var(--card-border); background: #111827; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border-radius: 18px;">
     <!-- Header Banner -->
     <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; text-align: center; color: #fff;">
         <h2 style="margin: 0; font-size: 1.4rem; letter-spacing: 0.5px;">🎟️ Booking Confirmed!</h2>
@@ -54,9 +54,16 @@
         </div>
 
         <!-- Action Buttons -->
-        <div style="display: flex; gap: 10px;">
-            <button onclick="window.print()" class="btn btn-outline" style="flex: 1; padding: 10px;">🖨️ Print Pass</button>
-            <a href="{{ url_for('index') }}" class="btn" style="flex: 1; padding: 10px; text-align: center;">Book Another</a>
+        <div style="display: flex; gap: 12px; margin-top: 14px;">
+            <button onclick="window.print()" class="btn btn-outline" style="flex: 1; padding: 11px; font-weight: 700; border-radius: 10px; border: 1px solid #374151; background: rgba(255, 255, 255, 0.05); color: #fff; cursor: pointer;">
+                🖨️ Print Pass
+            </button>
+            <a href="{{ url_for('index') }}" 
+               style="flex: 1; padding: 11px; text-align: center; text-decoration: none; font-weight: 800; font-size: 0.92rem; border-radius: 10px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); box-shadow: 0 0 15px rgba(56, 189, 248, 0.15); display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;"
+               onmouseover="this.style.background='#38bdf8'; this.style.color='#000'; this.style.boxShadow='0 0 20px rgba(56, 189, 248, 0.4)';"
+               onmouseout="this.style.background='rgba(56, 189, 248, 0.12)'; this.style.color='#38bdf8'; this.style.boxShadow='0 0 15px rgba(56, 189, 248, 0.15)';">
+                ← Book Another
+            </a>
         </div>
     </div>
 </div>
