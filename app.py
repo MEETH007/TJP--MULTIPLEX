@@ -14,16 +14,27 @@ try:
 except ImportError:
     pass
 
-# Initialize GenAI Client using v1alpha to access active endpoints
 gemini_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-gemini_client = (
-    genai.Client(
-        api_key=gemini_api_key,
-        http_options=types.HttpOptions(api_version="v1alpha")
-    )
-    if gemini_api_key
-    else None
-)
+gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
+
+# Automatically discover valid models enabled for your key
+VALID_GEMINI_MODELS = []
+if gemini_client:
+    try:
+        for model_info in gemini_client.models.list():
+            name = getattr(model_info, "name", "")
+            # Clean up the model name (remove 'models/' prefix if present)
+            clean_name = name.replace("models/", "")
+            VALID_GEMINI_MODELS.append(clean_name)
+        print(">>> ACTIVE GEMINI MODELS DETECTED:", VALID_GEMINI_MODELS)
+    except Exception as e:
+        print(">>> Could not query model list:", repr(e))
+
+# Prioritized list preferring flash and fast models
+PREFERRED_MODELS = [
+    m for m in VALID_GEMINI_MODELS 
+    if any(k in m.lower() for k in ["flash", "lite", "mini", "3.8", "2.5"])
+] or ["gemini-3.8-flash"]
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "tjp_multiplex_secret_super_key_2026")
@@ -856,11 +867,6 @@ def send_daily_report():
 
     return redirect(url_for("view_bookings"))
 
-CANDIDATE_MODELS = [
-    "gemini-3.8-flash",
-    "gemini-3.8-pro",
-    "gemini-exp-1206"
-]
 
 @app.route("/api/ai-concierge", methods=["POST"])
 def ai_concierge():
@@ -870,10 +876,7 @@ def ai_concierge():
     if not user_query:
         return jsonify({"reply": "How can I assist your TJP Cinema experience today?"})
 
-    if not gemini_client:
-        return jsonify({"reply": "The AI Concierge is currently offline. Please book your tickets directly below!"})
-
-    # Prepare inventory context
+    # Prepare real-time inventory
     movie_context = []
     for m in MOVIES:
         movie_context.append(
@@ -902,24 +905,44 @@ INSTRUCTIONS:
 4. Keep answers tight and helpful (typically 2 to 4 sentences).
 """
 
-    for model_name in CANDIDATE_MODELS:
-        try:
-            response = gemini_client.models.generate_content(
-                model=model_name,
-                contents=user_query,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.7,
-                    max_output_tokens=300
+    # 1. Try Live Gemini Models from detected list
+    if gemini_client:
+        for model_name in PREFERRED_MODELS:
+            try:
+                response = gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=user_query,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        temperature=0.7,
+                        max_output_tokens=300
+                    )
                 )
-            )
-            if response and response.text:
-                return jsonify({"reply": response.text})
-        except Exception as e:
-            print(f"Concierge fallback ({model_name}):", repr(e))
-            continue
+                if response and response.text:
+                    return jsonify({"reply": response.text})
+            except Exception as e:
+                print(f"Concierge fallback ({model_name}):", repr(e))
+                continue
 
-    return jsonify({"reply": "Our projectionists are fine-tuning the system. Feel free to explore our showtimes below or ask again in a moment!"})
+    # 2. Seamless Instant Fallback (If Google is under high-demand 503)
+    query_lower = user_query.lower()
+
+    if any(k in query_lower for k in ["snack", "popcorn", "nacho", "food", "drink", "coffee", "menu"]):
+        return jsonify({
+            "reply": "Our VIP Concessions offer a 100% Pure Vegetarian menu featuring Gourmet Caramel Popcorn, Truffle Butter Popcorn, Loaded Cheese & Jalapeño Nachos, Artisan Cold Coffee, and Sparkling Mocktails!"
+        })
+
+    for m in MOVIES:
+        if any(word in query_lower for word in m["title"].lower().split() if len(word) > 2):
+            times_str = ", ".join(m["times"])
+            return jsonify({
+                "reply": f"**{m['title']}** is screening in {m['screen']} at {times_str} (Rs. {m['price']}). <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Book Seats Now →</a>"
+            })
+
+    movie_list = ", ".join([m["title"] for m in MOVIES])
+    return jsonify({
+        "reply": f"Welcome to TJP Cinema! Currently screening: **{movie_list}**. Feel free to ask about showtimes, Dolby Atmos screens, or snacks!"
+    })
         
 # -------------------------------------------------------------
 # Server Entrypoint
