@@ -180,7 +180,7 @@
         }
 
         /* ================================================== */
-        /*         PREMIUM GLASSMORPHIC CINEBOT WIDGET        */
+        /*       LUMIÈRE VIP AI FLOATING LUXURY WIDGET        */
         /* ================================================== */
         #cinebot-btn {
             position: fixed;
@@ -513,8 +513,8 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- FLOATING LUXURY CINEBOT PILL TRIGGER -->
-    <button id="cinebot-btn" onclick="toggleAIChat()" aria-label="Open TJP Concierge">
+    <!-- FLOATING LUXURY LUMIÈRE PILL TRIGGER -->
+    <button id="cinebot-btn" onclick="toggleAIChat()" aria-label="Open Lumière Concierge">
         <div class="cinebot-icon-orb">
             <svg viewBox="0 0 24 24">
                 <path d="M12 2L14.39 8.26L21 9.27L16.2 13.97L17.5 20.5L12 17.27L6.5 20.5L7.8 13.97L3 9.27L9.61 8.26L12 2Z" />
@@ -523,20 +523,20 @@
         <div class="cinebot-label-group">
             <span class="cinebot-label-title">
                 <span class="cinebot-status-dot"></span>
-                CineBot AI
+                Lumière AI
             </span>
-            <span class="cinebot-label-sub">Ask for advice & snacks</span>
+            <span class="cinebot-label-sub">VIP Cinema Concierge</span>
         </div>
     </button>
 
     <!-- GLASSMORPHIC CHAT DIALOG BOX -->
-    <div id="cinebot-window" role="dialog" aria-modal="true" aria-label="TJP Concierge Chat">
+    <div id="cinebot-window" role="dialog" aria-modal="true" aria-label="Lumière Concierge Chat">
         <div class="cinebot-header">
             <div class="cinebot-header-left">
                 <span style="font-size: 1.25rem;">🎬</span>
                 <div>
-                    <div class="cinebot-header-title">TJP Concierge</div>
-                    <div class="cinebot-header-sub">● Powered by Gemini</div>
+                    <div class="cinebot-header-title">Lumière Concierge</div>
+                    <div class="cinebot-header-sub">● TJP VIP Service</div>
                 </div>
             </div>
             <button class="cinebot-close-btn" onclick="toggleAIChat()" aria-label="Close chat">✕</button>
@@ -544,13 +544,13 @@
 
         <div class="cinebot-messages" id="chatMessages">
             <div class="cinebot-bubble cinebot-bubble-bot">
-                Welcome to TJP Cinema. Looking for showtimes, movie suggestions, or snacks?
+                Welcome to TJP Cinema. I am Lumière, your personal VIP Concierge. May I assist you with showtimes, seat reservations, or gourmet refreshments today?
             </div>
         </div>
 
         <div class="cinebot-footer">
             <form class="cinebot-form" id="aiForm" onsubmit="event.preventDefault(); sendAIMessage();">
-                <input id="aiInput" class="cinebot-input" type="text" placeholder="Ask about movies, snacks, or IMAX..." autocomplete="off">
+                <input id="aiInput" class="cinebot-input" type="text" placeholder="Ask Lumière about movies, seats, or IMAX..." autocomplete="off">
                 <button type="submit" class="cinebot-send-btn" aria-label="Send message">
                     ➤
                 </button>
