@@ -18,12 +18,14 @@ except ImportError:
 gemini_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
 gemini_client = genai.Client(api_key=gemini_api_key) if gemini_api_key else None
 
-# Prioritized list using models explicitly supported by your API endpoint
+# Active fast chat models confirmed by your API catalog
 CANDIDATE_MODELS = [
-    "gemini-3.8-flash",
-    "gemini-3.1-pro-preview"
+    "gemini-flash-latest",
+    "gemini-flash-lite-latest",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite"
 ]
-
 # Dynamically discover any other text models while excluding TTS/audio/embeddings
 if gemini_client:
     try:
@@ -904,10 +906,10 @@ INSTRUCTIONS:
 1. Recommend movies, timings, or snacks strictly based on the live inventory above.
 2. Whenever recommending a movie or timing, ALWAYS provide an HTML link so the user can click directly to book. Example: <a href="/select-seats?movie_id=1&time=09:00%20PM" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
 3. If the user asks general movie questions (directors, actors, trivia), answer accurately and briefly in persona, then invite them to enjoy our screenings.
-4. Keep answers tight and helpful (typically 2 to 4 sentences).
+4. Keep answers clean, complete, and helpful (typically 2 to 4 sentences). Do NOT cut off mid-sentence.
 """
 
-    # 1. Try Live Gemini Models (Primary: gemini-3.8-flash, Secondary: gemini-3.1-pro-preview)
+    # 1. Try enabled Flash models (avoids 429 quota on Pro and 503 on 3.8)
     if gemini_client:
         for model_name in CANDIDATE_MODELS:
             try:
@@ -917,7 +919,7 @@ INSTRUCTIONS:
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
                         temperature=0.7,
-                        max_output_tokens=300
+                        max_output_tokens=600
                     )
                 )
                 if response and response.text:
@@ -926,7 +928,7 @@ INSTRUCTIONS:
                 print(f"Concierge fallback ({model_name}):", repr(e))
                 continue
 
-    # 2. Local Intelligent Backup (Guarantees 100% uptime during Google 503 surges)
+    # 2. Local Fallback (Matches showtimes and food instantly if API calls fail)
     query_lower = user_query.lower()
 
     if any(k in query_lower for k in ["snack", "popcorn", "nacho", "food", "drink", "coffee", "menu"]):
@@ -934,16 +936,22 @@ INSTRUCTIONS:
             "reply": "Our VIP Concessions offer a 100% Pure Vegetarian menu featuring Gourmet Caramel Popcorn, Truffle Butter Popcorn, Loaded Cheese & Jalapeño Nachos, Artisan Cold Coffee, and Sparkling Mocktails!"
         })
 
+    matched_shows = []
     for m in MOVIES:
-        if any(word in query_lower for word in m["title"].lower().split() if len(word) > 2):
+        if any(word in query_lower for word in m["title"].lower().split() if len(word) > 2) or "show" in query_lower or "movie" in query_lower:
             times_str = ", ".join(m["times"])
-            return jsonify({
-                "reply": f"**{m['title']}** is screening in {m['screen']} at {times_str} (Admission: Rs. {m['price']}). <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Book Seats Now →</a>"
-            })
+            matched_shows.append(
+                f"• <strong>{m['title']}</strong> ({m['screen']}) at {times_str} — <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Book Seats →</a>"
+            )
+
+    if matched_shows:
+        return jsonify({
+            "reply": "Here are our current screenings:<br>" + "<br>".join(matched_shows)
+        })
 
     movie_list = ", ".join([m["title"] for m in MOVIES])
     return jsonify({
-        "reply": f"Welcome to TJP Cinema! Currently screening: **{movie_list}**. Ask me for showtimes, seat booking links, or concession snacks!"
+        "reply": f"Welcome to TJP Cinema! Currently screening: **{movie_list}**. Feel free to ask about showtimes, Dolby Atmos screens, or snacks!"
     })
         
 # -------------------------------------------------------------
