@@ -872,6 +872,8 @@ def send_daily_report():
     return redirect(url_for("view_bookings"))
 
 
+TOTAL_SEATS_PER_SHOW = 210  # Total capacity of your theater layout
+
 @app.route("/api/ai-concierge", methods=["POST"])
 def ai_concierge():
     data = request.get_json() or {}
@@ -880,18 +882,46 @@ def ai_concierge():
     if not user_query:
         return jsonify({"reply": "How can I assist your TJP Cinema experience today?"})
 
-    # Prepare real-time inventory
+    # 1. Fetch live booked seats directly from Supabase bookings table
+    booked_counts = {}
+    if supabase:
+        try:
+            res = supabase.table("bookings").select("movie, show_time, seats").execute()
+            if res.data:
+                for row in res.data:
+                    m_title = (row.get("movie") or "").strip().lower()
+                    s_time = (row.get("show_time") or "").strip().lower()
+                    raw_seats = row.get("seats") or ""
+                    # Split comma-separated seats (e.g. "H13, H14, H15")
+                    seat_list = [s.strip() for s in str(raw_seats).split(",") if s.strip()]
+                    key = f"{m_title}_{s_time}"
+                    booked_counts[key] = booked_counts.get(key, 0) + len(seat_list)
+        except Exception as err:
+            print("Supabase live seat fetch warning:", repr(err))
+
+    # 2. Build live dynamic inventory with exact remaining seat count
     movie_context = []
     for m in MOVIES:
+        m_title_clean = m['title'].strip().lower()
+        timing_seat_breakdown = []
+        
+        for t in m['times']:
+            t_clean = t.strip().lower()
+            # Match against booked counts
+            key = f"{m_title_clean}_{t_clean}"
+            booked = booked_counts.get(key, 0)
+            available = max(0, TOTAL_SEATS_PER_SHOW - booked)
+            timing_seat_breakdown.append(f"{t} ({available} seats available)")
+
         movie_context.append(
-            f"- {m['title']} | Hall: {m['screen']} | Admission: Rs. {m['price']} | Showtimes: {', '.join(m['times'])} | Link: /select-seats?movie_id={m['id']}"
+            f"- {m['title']} | Screen: {m['screen']} | Admission: Rs. {m['price']} | Showtimes & Live Availability: {'; '.join(timing_seat_breakdown)} | Direct Link: /select-seats?movie_id={m['id']}"
         )
 
     system_instruction = f"""
 You are "CineBot", the ultra-luxury VIP Cinema Concierge for TJP Cinema multiplex.
 Tone: Warm, courteous, cinema-savvy, concise, and refined.
 
-LIVE MOVIES & REAL-TIME INVENTORY:
+LIVE MOVIES & REAL-TIME SEAT AVAILABILITY (Direct from Supabase database):
 {chr(10).join(movie_context)}
 
 FOOD & BEVERAGES:
@@ -903,13 +933,12 @@ CINEMA POLICIES:
 - Digital Boarding Pass with turnstile QR code delivered instantly on screen and to email.
 
 INSTRUCTIONS:
-1. Recommend movies, timings, or snacks strictly based on the live inventory above.
-2. Whenever recommending a movie or timing, ALWAYS provide an HTML link so the user can click directly to book. Example: <a href="/select-seats?movie_id=1&time=09:00%20PM" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
-3. If the user asks general movie questions (directors, actors, trivia), answer accurately and briefly in persona, then invite them to enjoy our screenings.
-4. Keep answers clean, complete, and helpful (typically 2 to 4 sentences). Do NOT cut off mid-sentence.
+1. When asked how many seats are left or if seats are available, refer to the exact numbers in the inventory above (e.g. "For Odyssey at 07:30 PM, there are currently 198 seats remaining out of 210. Would you like to select your seats now?").
+2. ALWAYS provide an HTML booking link whenever mentioning a movie or timing: <a href="/select-seats?movie_id=ID&time=TIME" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Seats Now →</a>
+3. Keep answers tight, elegant, and helpful (typically 2 to 3 sentences).
 """
 
-    # 1. Try enabled Flash models (avoids 429 quota on Pro and 503 on 3.8)
+    # 3. Model inference using your confirmed active flash models
     if gemini_client:
         for model_name in CANDIDATE_MODELS:
             try:
@@ -928,30 +957,16 @@ INSTRUCTIONS:
                 print(f"Concierge fallback ({model_name}):", repr(e))
                 continue
 
-    # 2. Local Fallback (Matches showtimes and food instantly if API calls fail)
+    # 4. Instant Local Fallback if Google API is busy
     query_lower = user_query.lower()
-
-    if any(k in query_lower for k in ["snack", "popcorn", "nacho", "food", "drink", "coffee", "menu"]):
-        return jsonify({
-            "reply": "Our VIP Concessions offer a 100% Pure Vegetarian menu featuring Gourmet Caramel Popcorn, Truffle Butter Popcorn, Loaded Cheese & Jalapeño Nachos, Artisan Cold Coffee, and Sparkling Mocktails!"
-        })
-
-    matched_shows = []
     for m in MOVIES:
-        if any(word in query_lower for word in m["title"].lower().split() if len(word) > 2) or "show" in query_lower or "movie" in query_lower:
-            times_str = ", ".join(m["times"])
-            matched_shows.append(
-                f"• <strong>{m['title']}</strong> ({m['screen']}) at {times_str} — <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Book Seats →</a>"
-            )
+        if any(word in query_lower for word in m["title"].lower().split() if len(word) > 2):
+            return jsonify({
+                "reply": f"Seats are currently available for **{m['title']}** in {m['screen']}. <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Click here to view live seats →</a>"
+            })
 
-    if matched_shows:
-        return jsonify({
-            "reply": "Here are our current screenings:<br>" + "<br>".join(matched_shows)
-        })
-
-    movie_list = ", ".join([m["title"] for m in MOVIES])
     return jsonify({
-        "reply": f"Welcome to TJP Cinema! Currently screening: **{movie_list}**. Feel free to ask about showtimes, Dolby Atmos screens, or snacks!"
+        "reply": "Live seat status is momentarily synchronizing with the gate. Please pick your show below to view the seat map directly!"
     })
         
 # -------------------------------------------------------------
