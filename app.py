@@ -872,7 +872,7 @@ def send_daily_report():
     return redirect(url_for("view_bookings"))
 
 
-TOTAL_SEATS_PER_SHOW = 210  # Total capacity of your theater layout
+TOTAL_SEATS_PER_SHOW = 442  # Total capacity of your theater layout
 
 @app.route("/api/ai-concierge", methods=["POST"])
 def ai_concierge():
