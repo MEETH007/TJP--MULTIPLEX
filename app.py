@@ -801,11 +801,14 @@ def send_daily_revenue_report():
 
     return True
     
+
 @app.route("/bookings", methods=["GET", "POST"])
 def view_bookings():
-    # Read strictly from environment without exposing plain-text fallbacks
     view_password = (os.environ.get("BOOKINGS_PASSWORD") or "").strip()
     reset_password = (os.environ.get("ADMIN_RESET_PASSWORD") or "").strip()
+
+    is_authenticated = False
+    all_bookings = []
 
     if request.method == "POST":
         action = request.form.get("action", "authenticate")
@@ -817,23 +820,15 @@ def view_bookings():
         ).strip()
 
         if action == "authenticate":
-            # Compare directly against the environment variable
             if view_password and entered_pass == view_password:
-                session["admin_logged_in"] = True
-                flash("Admin ledger unlocked successfully!")
+                is_authenticated = True
+                flash("Admin ledger unlocked for this session.")
             else:
-                session["admin_logged_in"] = False
                 flash("Incorrect admin passcode.")
-            return redirect(url_for("view_bookings"))
 
         elif action == "reset_bookings":
-            # Allow reset only if authenticated or if wipe password matches environment
-            authorized = (
-                (reset_password and entered_pass == reset_password)
-                or (session.get("admin_logged_in") and reset_password and entered_pass == reset_password)
-                or (session.get("admin_logged_in") and not entered_pass)
-            )
-            if authorized:
+            # Require reset passcode explicitly on wipe
+            if reset_password and entered_pass == reset_password:
                 try:
                     supabase.table("bookings").delete().neq("ticket_id", "0").execute()
                     supabase.table("seat_locks").delete().neq("session_id", "0").execute()
@@ -843,7 +838,6 @@ def view_bookings():
                     flash("Failed to wipe database records.")
             else:
                 flash("Incorrect reset passcode.")
-            return redirect(url_for("view_bookings"))
 
         elif action == "send_report":
             try:
@@ -851,11 +845,13 @@ def view_bookings():
                 flash("Daily revenue briefing dispatched to owner email!")
             except Exception as e:
                 flash(f"Report error: {e}")
-            return redirect(url_for("view_bookings"))
 
-    # Fetch ledger records if unlocked
-    all_bookings = []
-    is_authenticated = session.get("admin_logged_in", False)
+    else:
+        # Every GET request (page refresh, navigating away and coming back) forces a lock
+        session.pop("admin_logged_in", None)
+        is_authenticated = False
+
+    # Fetch records ONLY if the passcode was verified in this exact POST submission
     if is_authenticated:
         try:
             res = supabase.table("bookings").select("*").order("created_at", desc=True).execute()
