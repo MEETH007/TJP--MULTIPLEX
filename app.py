@@ -737,6 +737,70 @@ def scan_ticket():
 # -------------------------------------------------------------
 # Admin & Automated Reporting Routes
 # -------------------------------------------------------------
+def send_daily_revenue_report():
+    """Aggregates confirmed bookings from Supabase and dispatches summary metrics to the admin email."""
+    if not supabase:
+        raise Exception("Database connection not configured.")
+
+    res = supabase.table("bookings").select("*").execute()
+    rows = res.data or []
+
+    total_tickets = len(rows)
+    total_seats = 0
+    total_revenue = 0.0
+
+    for r in rows:
+        raw_seats = r.get("seats") or ""
+        seat_count = len([s for s in str(raw_seats).split(",") if s.strip()])
+        total_seats += seat_count
+
+        price = r.get("total_price")
+        if price is not None:
+            try:
+                total_revenue += float(price)
+            except (ValueError, TypeError):
+                total_revenue += seat_count * PRICE_ELITE
+        else:
+            total_revenue += seat_count * PRICE_ELITE
+
+    now_str = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    print(f">>> DAILY BRIEFING: {total_tickets} orders, {total_seats} seats, Rs. {total_revenue:,.2f}")
+
+    recipient = (os.environ.get("ADMIN_REPORT_EMAIL") or BREVO_SENDER_EMAIL or "").strip().strip('"').strip("'")
+    sender = (BREVO_SENDER_EMAIL or "").strip().strip('"').strip("'")
+
+    if BREVO_API_KEY and recipient and "@" in recipient and sender:
+        report_html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #1a202c;">
+            <h2 style="color: #d97706; margin-top: 0;">📊 TJP Cinema — Daily Briefing</h2>
+            <p style="color: #718096; font-size: 0.9rem;">Dispatched on: <strong>{now_str}</strong></p>
+            <hr style="border: none; border-top: 1px solid #edf2f7; margin: 18px 0;">
+            <p><strong>Total Confirmed Bookings:</strong> {total_tickets}</p>
+            <p><strong>Total Seats Booked:</strong> {total_seats}</p>
+            <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px 16px; margin-top: 15px;">
+                <h3 style="margin: 0; color: #16a34a;">Estimated Grand Revenue: Rs. {total_revenue:,.2f}</h3>
+            </div>
+        </div>
+        """
+        payload = {
+            "sender": {"name": "TJP Cinema Ops", "email": sender},
+            "to": [{"email": recipient, "name": "Cinema Owner"}],
+            "subject": f"📊 Daily Revenue Briefing — {now_str}",
+            "htmlContent": report_html
+        }
+        headers = {
+            "accept": "application/json",
+            "api-key": BREVO_API_KEY,
+            "content-type": "application/json"
+        }
+        try:
+            r = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=20)
+            print("Daily report email status:", r.status_code, r.text)
+        except Exception as email_err:
+            print("Failed to dispatch daily report email via Brevo:", repr(email_err))
+
+    return True
+    
 @app.route("/bookings", methods=["GET", "POST"])
 def view_bookings():
     # Read strictly from environment without exposing plain-text fallbacks
