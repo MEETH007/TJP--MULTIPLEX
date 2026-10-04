@@ -936,52 +936,54 @@ TOTAL_SEATS_PER_SHOW = 442  # Total capacity of your theater layout
 
 @app.route("/api/ai-concierge", methods=["POST"])
 def ai_concierge():
-    data = request.get_json() or {}
-    user_query = data.get("message", "").strip()
+    try:
+        data = request.get_json(silent=True) or {}
+        user_query = data.get("message", "").strip()
 
-    if not user_query:
-        return jsonify({"reply": "How can I assist your TJP Cinema experience today?"})
+        if not user_query:
+            return jsonify({"reply": "Greetings! I am Lumière. How may I assist your TJP Cinema experience today?"})
 
-    # 1. Fetch live booked seats directly from Supabase bookings table
-    booked_counts = {}
-    if supabase:
-        try:
-            res = supabase.table("bookings").select("movie, show_time, seats").execute()
-            if res.data:
-                for row in res.data:
-                    m_title = (row.get("movie") or "").strip().lower()
-                    s_time = (row.get("show_time") or "").strip().lower()
-                    raw_seats = row.get("seats") or ""
-                    # Split comma-separated seats (e.g. "H13, H14, H15")
-                    seat_list = [s.strip() for s in str(raw_seats).split(",") if s.strip()]
-                    key = f"{m_title}_{s_time}"
-                    booked_counts[key] = booked_counts.get(key, 0) + len(seat_list)
-        except Exception as err:
-            print("Supabase live seat fetch warning:", repr(err))
+        # 1. Fetch live booked seat totals safely from Supabase
+        booked_counts = {}
+        if supabase:
+            try:
+                res = supabase.table("bookings").select("movie, show_time, seats").execute()
+                if res and res.data:
+                    for row in res.data:
+                        m_title = (row.get("movie") or "").strip().lower()
+                        s_time = (row.get("show_time") or "").strip().lower()
+                        raw_seats = row.get("seats") or ""
+                        if isinstance(raw_seats, list):
+                            seat_list = raw_seats
+                        else:
+                            seat_list = [s.strip() for s in str(raw_seats).split(",") if s.strip()]
+                        key = f"{m_title}_{s_time}"
+                        booked_counts[key] = booked_counts.get(key, 0) + len(seat_list)
+            except Exception as sb_err:
+                print("Supabase live seat fetch warning (non-fatal):", repr(sb_err))
 
-    # 2. Build live dynamic inventory with exact remaining seat count
-    movie_context = []
-    for m in MOVIES:
-        m_title_clean = m['title'].strip().lower()
-        timing_seat_breakdown = []
-        
-        for t in m['times']:
-            t_clean = t.strip().lower()
-            # Match against booked counts
-            key = f"{m_title_clean}_{t_clean}"
-            booked = booked_counts.get(key, 0)
-            available = max(0, TOTAL_SEATS_PER_SHOW - booked)
-            timing_seat_breakdown.append(f"{t} ({available} seats available)")
+        # 2. Build live theater context
+        movie_context = []
+        for m in MOVIES:
+            m_title_clean = m.get("title", "").strip().lower()
+            timing_seat_breakdown = []
+            
+            for t in m.get("times", []):
+                t_clean = t.strip().lower()
+                key = f"{m_title_clean}_{t_clean}"
+                booked = booked_counts.get(key, 0)
+                available = max(0, TOTAL_SEATS_PER_SHOW - booked)
+                timing_seat_breakdown.append(f"{t} ({available} seats available out of {TOTAL_SEATS_PER_SHOW})")
 
-        movie_context.append(
-            f"- {m['title']} | Screen: {m['screen']} | Admission: Rs. {m['price']} | Showtimes & Live Availability: {'; '.join(timing_seat_breakdown)} | Direct Link: /select-seats?movie_id={m['id']}"
-        )
+            movie_context.append(
+                f"- {m.get('title')} | Screen: {m.get('screen')} | Admission: Rs. {m.get('price', 250.0)} | Showtimes & Availability: {'; '.join(timing_seat_breakdown)} | Link: /select-seats?movie_id={m.get('id')}"
+            )
 
-    system_instruction = f"""
+        system_instruction = f"""
 You are "Lumière", the personal VIP Cinema Concierge for TJP Cinema multiplex.
 Tone: Warm, courteous, articulate, refined, and cinema-savvy.
 
-LIVE MOVIES & REAL-TIME SEAT AVAILABILITY (Direct from Supabase database):
+LIVE MOVIES & REAL-TIME SEAT AVAILABILITY (Supabase database):
 {chr(10).join(movie_context)}
 
 FOOD & BEVERAGES:
@@ -995,42 +997,52 @@ CINEMA POLICIES:
 
 INSTRUCTIONS:
 1. Always introduce or carry yourself as Lumière, TJP Cinema's VIP Concierge.
-2. When asked about seat availability, state the exact remaining seats from the inventory above (e.g., "For Odyssey at 07:30 PM, there are currently 420 seats available out of 444. Would you like to reserve yours now?").
-3. ALWAYS provide an HTML booking link whenever recommending a movie or timing: <a href="/select-seats?movie_id=ID&time=TIME" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
-4. If the user asks general movie questions (directors, actors, cast trivia), answer accurately and concisely in character, then invite them to reserve their experience.
-5. Keep answers tight, crisp, and helpful (typically 2 to 4 sentences).
+2. State live remaining seats clearly whenever asked about availability.
+3. Provide an HTML booking link when recommending a film: <a href="/select-seats?movie_id=ID&time=TIME" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
+4. Keep replies crisp and helpful (2 to 4 sentences).
 """
 
-    # 3. Model inference using your confirmed active flash models
-    if gemini_client:
-        for model_name in CANDIDATE_MODELS:
-            try:
-                response = gemini_client.models.generate_content(
-                    model=model_name,
-                    contents=user_query,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_instruction,
-                        temperature=0.7,
-                        max_output_tokens=600
+        # 3. Model inference with resilient fallback models
+        if gemini_client:
+            for model_name in CANDIDATE_MODELS:
+                try:
+                    response = gemini_client.models.generate_content(
+                        model=model_name,
+                        contents=user_query,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            temperature=0.7,
+                            max_output_tokens=600
+                        )
                     )
-                )
-                if response and response.text:
-                    return jsonify({"reply": response.text})
-            except Exception as e:
-                print(f"Concierge fallback ({model_name}):", repr(e))
-                continue
+                    if response and response.text:
+                        return jsonify({"reply": response.text})
+                except Exception as g_err:
+                    print(f"Concierge model {model_name} failed:", repr(g_err))
+                    continue
 
-    # 4. Instant Local Fallback if Google API is busy
-    query_lower = user_query.lower()
-    for m in MOVIES:
-        if any(word in query_lower for word in m["title"].lower().split() if len(word) > 2):
+        # 4. Built-in Local Fallback (Guarantees 200 OK response if API limits are hit)
+        query_lower = user_query.lower()
+        if any(w in query_lower for w in ["hi", "hello", "hey"]):
             return jsonify({
-                "reply": f"Seats are currently available for **{m['title']}** in {m['screen']}. <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Click here to view live seats →</a>"
+                "reply": "Welcome to TJP Cinema! I am Lumière, your VIP Concierge. Would you like to check today's showtimes, reserve seats, or preview our gourmet concession menu?"
             })
 
-    return jsonify({
-        "reply": "Live seat status is momentarily synchronizing with the gate. Please pick your show below to view the seat map directly!"
-    })
+        for m in MOVIES:
+            if any(word in query_lower for word in m["title"].lower().split() if len(word) > 2):
+                return jsonify({
+                    "reply": f"Seats are available for **{m['title']}** in {m['screen']}. <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Click here to select your seats →</a>"
+                })
+
+        return jsonify({
+            "reply": "I am currently synchronizing with the box office. Please choose your preferred movie on screen to view real-time seating!"
+        })
+
+    except Exception as route_err:
+        print("CRITICAL /api/ai-concierge ERROR:", repr(route_err))
+        return jsonify({
+            "reply": "Lumière is temporarily refreshing box office connections. Please select a showtime above or try again in a moment."
+        }), 200
         
 # -------------------------------------------------------------
 # Server Entrypoint
