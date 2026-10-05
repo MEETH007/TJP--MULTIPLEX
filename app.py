@@ -630,7 +630,8 @@ def confirm_booking():
     movie = active_hold.get("movie")
     show_time = active_hold.get("show_time")
     selected_seats = active_hold.get("seats", [])
-    ticket_total = float(active_hold.get("ticket_total", 0.0))
+    price_per_seat = float(active_hold.get("price_per_seat", 0.0))
+    ticket_total = float(active_hold.get("ticket_total", price_per_seat * len(selected_seats)))
 
     # Pull user details directly from the food/concessions form
     customer_name = request.form.get("name", "").strip() or active_hold.get("guest_name", "Guest")
