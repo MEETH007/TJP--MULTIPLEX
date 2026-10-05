@@ -932,7 +932,7 @@ def send_daily_report():
     return redirect(url_for("view_bookings"))
 
 
-TOTAL_SEATS_PER_SHOW = 442  # Total capacity of your theater layout
+TOTAL_SEATS_PER_SHOW = 442  # Hall capacity layout
 
 @app.route("/api/ai-concierge", methods=["POST"])
 def ai_concierge():
@@ -962,7 +962,7 @@ def ai_concierge():
             except Exception as sb_err:
                 print("Supabase live seat fetch warning (non-fatal):", repr(sb_err))
 
-        # 2. Build live theater context
+        # 2. Build live dynamic inventory with movie-specific pricing
         movie_context = []
         for m in MOVIES:
             m_title_clean = m.get("title", "").strip().lower()
@@ -976,7 +976,7 @@ def ai_concierge():
                 timing_seat_breakdown.append(f"{t} ({available} seats available out of {TOTAL_SEATS_PER_SHOW})")
 
             movie_context.append(
-                f"- {m.get('title')} | Screen: {m.get('screen')} | Admission: Rs. {m.get('price', 250.0)} | Showtimes & Availability: {'; '.join(timing_seat_breakdown)} | Link: /select-seats?movie_id={m.get('id')}"
+                f"- {m.get('title')} | Screen: {m.get('screen')} | Admission: Rs. {m.get('price')} | Showtimes & Availability: {'; '.join(timing_seat_breakdown)} | Direct Link: /select-seats?movie_id={m.get('id')}"
             )
 
         system_instruction = f"""
@@ -990,19 +990,20 @@ FOOD & BEVERAGES:
 100% Pure Vegetarian menu. Items include Gourmet Caramel Popcorn, Truffle Butter Salted Popcorn, Loaded Cheese & Jalapeño Nachos, Artisan Cold Coffee, and Sparkling Mocktails.
 
 CINEMA POLICIES:
-- Hall Capacity: {TOTAL_SEATS_PER_SHOW} seats (Rows H-O: Elite at Rs. {PRICE_ELITE}, Rows A-G: Classic at Rs. {PRICE_CLASSIC}).
+- Hall Capacity: {TOTAL_SEATS_PER_SHOW} seats.
 - Active 7-minute seat hold during selection.
 - Laser 4K projection & Dolby Atmos audio.
 - Digital Boarding Pass with turnstile QR code delivered instantly on screen and to email.
 
 INSTRUCTIONS:
 1. Always introduce or carry yourself as Lumière, TJP Cinema's VIP Concierge.
-2. State live remaining seats clearly whenever asked about availability.
-3. Provide an HTML booking link when recommending a film: <a href="/select-seats?movie_id=ID&time=TIME" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
-4. Keep replies crisp and helpful (2 to 4 sentences).
+2. Quote the specific film's admission price directly from the live list above.
+3. State live remaining seats clearly whenever asked about availability.
+4. ALWAYS provide an HTML booking link when recommending a film: <a href="/select-seats?movie_id=ID&time=TIME" style="color: #f59e0b; font-weight: bold; text-decoration: underline;">Book Now →</a>
+5. Keep replies crisp and helpful (2 to 4 sentences).
 """
 
-        # 3. Model inference with resilient fallback models
+        # 3. Model inference using active flash models
         if gemini_client:
             for model_name in CANDIDATE_MODELS:
                 try:
@@ -1021,7 +1022,7 @@ INSTRUCTIONS:
                     print(f"Concierge model {model_name} failed:", repr(g_err))
                     continue
 
-        # 4. Built-in Local Fallback (Guarantees 200 OK response if API limits are hit)
+        # 4. Built-in Local Fallback (Guarantees 200 OK response if API is busy)
         query_lower = user_query.lower()
         if any(w in query_lower for w in ["hi", "hello", "hey"]):
             return jsonify({
@@ -1031,7 +1032,7 @@ INSTRUCTIONS:
         for m in MOVIES:
             if any(word in query_lower for word in m["title"].lower().split() if len(word) > 2):
                 return jsonify({
-                    "reply": f"Seats are available for **{m['title']}** in {m['screen']}. <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Click here to select your seats →</a>"
+                    "reply": f"Seats are available for **{m['title']}** in {m['screen']} at Rs. {m['price']}. <a href='/select-seats?movie_id={m['id']}' style='color: #f59e0b; font-weight: bold; text-decoration: underline;'>Click here to select your seats →</a>"
                 })
 
         return jsonify({
