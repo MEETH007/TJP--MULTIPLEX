@@ -126,8 +126,7 @@ By re-architecting the production container from a single synchronous worker to 
 <summary><b>📂 [ CLICK TO EXPAND RAW LOCUST SWARM TELEMETRY LOGS ]</b></summary>
 <br/>
 
-```text
-====================================================================================================
+<pre><code>====================================================================================================
 LOCUST SWARM REPORT // TARGET: tjp-multiplex-utsw.onrender.com
 ====================================================================================================
 Type     Name                  # Reqs   # Fails   Median (ms)   95%ile (ms)   Avg (ms)   RPS
@@ -141,8 +140,7 @@ GET      /select-seats             87         0          1100          2100    1
          Aggregated               317        15          1400          2900    1373.48   3.3
 ====================================================================================================
 * NOTE: 409 Conflict responses on /api/lock-seats confirm active race-condition interception when
-  multiple bots targeted identical seat coordinates simultaneously.
-```
+  multiple bots targeted identical seat coordinates simultaneously.</code></pre>
 </details>
 
 ---
@@ -160,31 +158,25 @@ GET      /select-seats             87         0          1100          2100    1
 ## 💻 `05 // LOCAL DEPLOYMENT & SWARM SIMULATION`
 
 ### 1️⃣ Clone & Initialize Environment
-```bash
-git clone [https://github.com/MEETH007/TJP--MULTIPLEX.git](https://github.com/MEETH007/TJP--MULTIPLEX.git)
+<pre><code>git clone https&#58;//github.com/MEETH007/TJP--MULTIPLEX.git
 cd TJP--MULTIPLEX
-pip install -r requirements.txt
-```
+pip install -r requirements.txt</code></pre>
 
 ### 2️⃣ Inject Environment Keys (`.env`)
-```ini
-SECRET_KEY="TJP_ULTRA_SECRET_HASH"
-SUPABASE_URL="[https://your-project.supabase.co](https://your-project.supabase.co)"
+<pre><code>SECRET_KEY="TJP_ULTRA_SECRET_HASH"
+SUPABASE_URL="https&#58;//your-project.supabase.co"
 SUPABASE_KEY="your-supabase-service-role-key"
 GEMINI_API_KEY="your-google-gemini-key"
 BREVO_API_KEY="your-brevo-smtp-api-key"
 BOOKINGS_PASSWORD="admin-ledger-view-pass"
-ADMIN_RESET_PASSWORD="admin-emergency-wipe-pass"
-```
+ADMIN_RESET_PASSWORD="admin-emergency-wipe-pass"</code></pre>
 
 ### 3️⃣ Launch Production Engine or Locust Swarm
-```bash
-# Start Multi-Threaded Production Server
+<pre><code># Start Multi-Threaded Production Server
 gunicorn -w 2 --threads 4 --timeout 90 app:app
 
 # Launch Locust Stress-Test Swarm (localhost:8089)
-python -m locust -f locustfile.py --host [https://tjp-multiplex-utsw.onrender.com](https://tjp-multiplex-utsw.onrender.com)
-```
+python -m locust -f locustfile.py --host https&#58;//tjp-multiplex-utsw.onrender.com</code></pre>
 
 <div align="center">
 
