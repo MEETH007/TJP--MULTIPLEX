@@ -85,7 +85,7 @@ MOVIES = [
         "title": "Odyssey (IMAX)",
         "screen": "Screen 1 • IMAX with Laser",
         "price": 650.0,
-        "poster_url": "/static/posters/odyssey.jpg",
+        "poster_url": "https://dx35vtwkllhj9.cloudfront.net/universalstudios/the-odyssey/images/regions/ca/onesheet.jpg",
         "trailer_url": "https://www.youtube-nocookie.com/embed/f_bKjZeJBBI",
         "times": ["10:00 AM", "01:30 PM", "04:00 PM", "07:30 PM"]
     },
@@ -94,7 +94,7 @@ MOVIES = [
         "title": "Avengers Doomsday (Pre booking)",
         "screen": "Screen 2 • Dolby Atmos 4K",
         "price": 350.0,
-        "poster_url": "/static/posters/avengers_doomsday.jpg",
+        "poster_url": "https://images.weserv.nl/?url=www.impawards.com/2026/posters/avengers_doomsday_ver4.jpg",
         "trailer_url": "https://www.youtube-nocookie.com/embed/irVNGjRFZGk",
         "times": ["10:30 AM", "02:00 PM", "05:30 PM", "09:00 PM"]
     },
@@ -103,7 +103,7 @@ MOVIES = [
         "title": "Spider-Man: BRAND NEW DAY",
         "screen": "Screen 3 • Prime 3D",
         "price": 300.0,
-        "poster_url": "/static/posters/spiderman_brandnewday.jpg",
+        "poster_url": "https://upload.wikimedia.org/wikipedia/en/0/00/Spider-Man_No_Way_Home_poster.jpg",
         "trailer_url": "https://www.youtube-nocookie.com/embed/62bIsvRcPv0",
         "times": ["11:00 AM", "02:30 PM", "06:00 PM", "09:30 PM"]
     },
@@ -112,7 +112,7 @@ MOVIES = [
         "title": "Dune: Part THREE (IMAX)",
         "screen": "Screen 1 • IMAX with Laser",
         "price": 650.0,
-        "poster_url": "/static/posters/dune_part3.jpg",
+        "poster_url": "https://upload.wikimedia.org/wikipedia/en/5/52/Dune_Part_Two_poster.jpeg",
         "trailer_url": "https://www.youtube-nocookie.com/embed/NdvqHc56lE0",
         "times": ["10:15 AM", "01:45 PM", "05:15 PM", "08:45 PM"]
     },
@@ -121,7 +121,7 @@ MOVIES = [
         "title": "Avengers : Endgame Encore",
         "screen": "Screen 2 • Dolby Atmos 4K",
         "price": 250.0,
-        "poster_url": "/static/posters/avengers_endgame.jpg",
+        "poster_url": "https://upload.wikimedia.org/wikipedia/en/0/0d/Avengers_Endgame_poster.jpg",
         "trailer_url": "https://www.youtube-nocookie.com/embed/L2NAh3CIdig",
         "times": ["11:30 AM", "03:00 PM", "06:30 PM", "10:00 PM"]
     }
@@ -145,7 +145,7 @@ def get_all_shows():
 # -------------------------------------------------------------
 # Seat Validation & Database Helpers (Fail-Closed)
 # -------------------------------------------------------------
-VALID_SEATS = {f"{row}{num}" for row in "ABCDEFGH" for num in range(1, 12)}
+VALID_SEATS = {f"{row}{num}" for row in "ABCDEFGHJKLMNOPQRSTUVWXYZ" for num in range(1, 36)}
 
 def get_session_id():
     if "session_uid" not in session:
